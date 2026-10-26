@@ -10,21 +10,16 @@ import {
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
-    Dimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';
-import { Colors } from '../theme/colors';
 
-const { width } = Dimensions.get('window');
 
 export default function LoginScreen() {
     const { login, register, guestLogin } = useAuth();
-    const { theme } = useTheme();
-    const isDark = theme === 'dark';
-    const colors = isDark ? Colors.dark : Colors.light;
+    const { isDark, colors } = useTheme();
 
     const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
     const [loading, setLoading] = useState(false);

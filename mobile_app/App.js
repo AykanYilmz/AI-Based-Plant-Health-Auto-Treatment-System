@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationBar } from 'expo-navigation-bar';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Colors } from './src/theme/colors';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 
@@ -17,10 +16,8 @@ import DiagnosisResultScreen from './src/screens/DiagnosisResultScreen';
 const Stack = createNativeStackNavigator();
 
 function AppContent() {
-    const { theme } = useTheme();
+    const { isDark, colors } = useTheme();
     const { user, loading } = useAuth();
-    const isDark = theme === 'dark';
-    const colors = isDark ? Colors.dark : Colors.light;
 
     // React Navigation'ın arka plan sızıntılarını (beyaz köşeler vb.) önlemek için custom tema
     const MyNavigationTheme = {

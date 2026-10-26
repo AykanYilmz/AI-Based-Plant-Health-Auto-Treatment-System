@@ -1,24 +1,22 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, StatusBar, Dimensions, Image, Linking, ActivityIndicator, AppState } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, StatusBar, Dimensions, Linking, ActivityIndicator, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
-import { Colors } from '../theme/colors';
-import { API_BASE } from '../config';
+import { api } from '../services/ApiClient';
 import { useAuth } from '../context/AuthContext';
 import CustomAlert from '../components/CustomAlert';
+import { useCustomAlert } from '../hooks/useCustomAlert';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 
 export default function CameraScreen({ navigation }) {
-    const { theme } = useTheme();
+    const { isDark, colors } = useTheme();
     const { user } = useAuth();
-    const isDark = theme === 'dark';
-    const colors = isDark ? Colors.dark : Colors.light;
 
     const styles = useMemo(() => getDynamicStyles(colors), [colors]);
 
@@ -30,30 +28,8 @@ export default function CameraScreen({ navigation }) {
     const [analyzeStep, setAnalyzeStep] = useState(''); // Hangi katmanda olduğunu gösterir
     const insets = useSafeAreaInsets();
 
-    // Özel Onay Modalı State'leri
-    const [customAlertVisible, setCustomAlertVisible] = useState(false);
-    const [customAlertConfig, setCustomAlertConfig] = useState({
-        title: '',
-        message: '',
-        confirmText: '',
-        cancelText: '',
-        isDestructive: false,
-        showCancel: true,
-        onConfirm: () => {},
-    });
-
-    const showCustomAlert = (title, message, onConfirm, isDestructive = false, confirmText = 'Onayla', cancelText = 'Vazgeç', showCancel = true) => {
-        setCustomAlertConfig({
-            title,
-            message,
-            onConfirm,
-            isDestructive,
-            confirmText,
-            cancelText,
-            showCancel
-        });
-        setCustomAlertVisible(true);
-    };
+    // Özel onay modalı
+    const { showInfoAlert, customAlertProps } = useCustomAlert();
 
     const cameraRef = useRef(null);
     const isMountedRef = useRef(true);
@@ -182,16 +158,7 @@ export default function CameraScreen({ navigation }) {
                 });
             }
 
-            const response = await fetch(`${API_BASE}/api/diagnose`, {
-                method: 'POST',
-                headers: {
-                    'X-User-UUID': user?.uuid || 'default_guest_uuid'
-                },
-                body: formData,
-                signal
-            });
-
-            const result = await response.json();
+            const result = await api.diagnose(formData, user?.uuid, signal);
 
             if (isMountedRef.current) {
                 if (result.basarili) {
@@ -201,25 +168,9 @@ export default function CameraScreen({ navigation }) {
                     });
                 } else {
                     if (result.dusuk_confidence) {
-                        showCustomAlert(
-                            "Emin Değilim",
-                            "Bitki türü yeterince güvenilir tespit edilemedi. Lütfen yaprağı daha yakından ve net bir şekilde çekin.",
-                            () => setCustomAlertVisible(false),
-                            false,
-                            "Tekrar Dene",
-                            "",
-                            false
-                        );
+                        showInfoAlert("Emin Değilim", "Bitki türü yeterince güvenilir tespit edilemedi. Lütfen yaprağı daha yakından ve net bir şekilde çekin.", "Tekrar Dene");
                     } else {
-                        showCustomAlert(
-                            "Hata",
-                            result.hata || "Analiz yapılamadı.",
-                            () => setCustomAlertVisible(false),
-                            false,
-                            "Tamam",
-                            "",
-                            false
-                        );
+                        showInfoAlert("Hata", result.hata || "Analiz yapılamadı.");
                     }
                 }
             }
@@ -230,15 +181,7 @@ export default function CameraScreen({ navigation }) {
             }
             console.log("API Hatası:", error);
             if (isMountedRef.current) {
-                showCustomAlert(
-                    "Bağlantı Hatası",
-                    "Sunucuya bağlanılamadı. Lütfen backend sunucusunun çalıştığından emin olun.",
-                    () => setCustomAlertVisible(false),
-                    false,
-                    "Tamam",
-                    "",
-                    false
-                );
+                showInfoAlert("Bağlantı Hatası", "Sunucuya bağlanılamadı. Lütfen backend sunucusunun çalıştığından emin olun.");
             }
         } finally {
             if (isMountedRef.current) {
@@ -246,7 +189,7 @@ export default function CameraScreen({ navigation }) {
                 setAnalyzeStep('');
             }
         }
-    }, [navigation, user]);
+    }, [navigation, user, showInfoAlert]);
 
     // Galeriden fotoğraf seçimi
     const pickImage = useCallback(async () => {
@@ -320,17 +263,7 @@ export default function CameraScreen({ navigation }) {
 
     // ÖZEL ONAY MODALI (galeri analizi hataları izin ekranında da gösterilebilsin)
     const customAlert = (
-        <CustomAlert
-            visible={customAlertVisible}
-            title={customAlertConfig.title}
-            message={customAlertConfig.message}
-            confirmText={customAlertConfig.confirmText}
-            cancelText={customAlertConfig.cancelText}
-            isDestructive={customAlertConfig.isDestructive}
-            showCancel={customAlertConfig.showCancel}
-            onConfirm={customAlertConfig.onConfirm}
-            onCancel={() => setCustomAlertVisible(false)}
-        />
+        <CustomAlert {...customAlertProps} />
     );
 
     // İzin henüz yüklenmedi
@@ -494,15 +427,7 @@ export default function CameraScreen({ navigation }) {
 
                             {/* İpuçları Tuşu */}
                             <TouchableOpacity style={styles.actionSideItem} onPress={() => {
-                                showCustomAlert(
-                                    "İpucu",
-                                    "Yaprak fotoğrafını çekerken:\n\n• Bitkiye çok yaklaşmayın\n• Işığın arkadan gelmemesine dikkat edin\n• Yaprağın tam görünmesini sağlayın\n\nYapay zeka yaprağı otomatik bulup analiz edecektir.",
-                                    () => setCustomAlertVisible(false),
-                                    false,
-                                    "Anladım",
-                                    "",
-                                    false
-                                );
+                                showInfoAlert("İpucu", "Yaprak fotoğrafını çekerken:\n\n• Bitkiye çok yaklaşmayın\n• Işığın arkadan gelmemesine dikkat edin\n• Yaprağın tam görünmesini sağlayın\n\nYapay zeka yaprağı otomatik bulup analiz edecektir.", "Anladım");
                             }}>
                                 <View style={styles.actionSubCircle}>
                                     <MaterialCommunityIcons name="help" size={24} color={isDark ? '#FFF' : '#1A1A1A'} />

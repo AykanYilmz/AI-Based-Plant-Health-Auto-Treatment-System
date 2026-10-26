@@ -9,25 +9,22 @@ import {
     FlatList, 
     Image, 
     TouchableOpacity, 
-    ActivityIndicator, 
-    Modal, 
-    ScrollView 
+    ActivityIndicator
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { Colors } from '../theme/colors';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 
-import { API_BASE } from '../config';
+import { api } from '../services/ApiClient';
 import DiagnosisDetailModal from '../components/myplants/DiagnosisDetailModal';
 import CustomAlert from '../components/CustomAlert';
+import { useCustomAlert } from '../hooks/useCustomAlert';
 
 export default function SearchScreen() {
-    const { theme } = useTheme();
+    const { isDark, colors } = useTheme();
     const { user } = useAuth();
-    const isDark = theme === 'dark';
-    const colors = isDark ? Colors.dark : Colors.light;
+    const userUuid = user?.uuid;
 
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -35,41 +32,18 @@ export default function SearchScreen() {
     const [selectedItem, setSelectedItem] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
 
-    // Özel Onay Modalı State'leri
-    const [customAlertVisible, setCustomAlertVisible] = useState(false);
-    const [customAlertConfig, setCustomAlertConfig] = useState({
-        title: '',
-        message: '',
-        confirmText: '',
-        cancelText: '',
-        isDestructive: false,
-        showCancel: true,
-        onConfirm: () => {},
-    });
-
-    const showCustomAlert = (title, message, onConfirm, isDestructive = false, confirmText = 'Onayla', cancelText = 'Vazgeç', showCancel = true) => {
-        setCustomAlertConfig({
-            title,
-            message,
-            onConfirm,
-            isDestructive,
-            confirmText,
-            cancelText,
-            showCancel
-        });
-        setCustomAlertVisible(true);
-    };
+    // Özel onay modalı
+    const { showCustomAlert, showInfoAlert, hideCustomAlert, customAlertProps } = useCustomAlert();
 
     // Dinamik stiller
     const styles = useMemo(() => getDynamicStyles(colors), [colors]);
 
     // Geçmiş verilerini çek
     const fetchHistory = useCallback(async (showLoadingIndicator = true) => {
-        if (!user?.uuid) return;
+        if (!userUuid) return;
         if (showLoadingIndicator) setLoading(true);
         try {
-            const response = await fetch(`${API_BASE}/api/history?uuid=${user.uuid}`);
-            const data = await response.json();
+            const data = await api.getHistory(userUuid);
             if (data.basarili) {
                 setHistory(data.gecmis || []);
             } else {
@@ -81,7 +55,7 @@ export default function SearchScreen() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [user?.uuid]);
+    }, [userUuid]);
 
     // Her sayfa odaklandığında (Logs sekmesine tıklandığında) verileri yenile (Gelişmiş UX)
     useFocusEffect(
@@ -103,34 +77,23 @@ export default function SearchScreen() {
             "Geçmişi Temizle",
             "Tüm teşhis geçmişinizi ve kayıtlı fotoğraflarınızı kalıcı olarak silmek istediğinizden emin misiniz?",
             async () => {
-                setCustomAlertVisible(false);
+                hideCustomAlert();
                 try {
-                    const response = await fetch(`${API_BASE}/api/history?uuid=${user?.uuid}`, {
-                        method: 'DELETE'
-                    });
-                    const data = await response.json();
+                    const data = await api.deleteAllHistory(userUuid);
                     if (data.basarili) {
                         setHistory([]);
                         // Başarılı uyarısı için CustomAlert'i tek butonlu olarak göster
                         setTimeout(() => {
-                            showCustomAlert(
-                                "Başarılı",
-                                "Tüm teşhis geçmişiniz başarıyla temizlendi.",
-                                () => setCustomAlertVisible(false),
-                                false,
-                                "Tamam",
-                                "",
-                                false
-                            );
+                            showInfoAlert("Başarılı", "Tüm teşhis geçmişiniz başarıyla temizlendi.");
                         }, 500);
                     } else {
                         setTimeout(() => {
-                            showCustomAlert("Hata", "Geçmiş temizlenemedi: " + data.hata, () => setCustomAlertVisible(false), false, "Tamam", "", false);
+                            showInfoAlert("Hata", "Geçmiş temizlenemedi: " + data.hata);
                         }, 500);
                     }
-                } catch (error) {
+                } catch (_error) {
                     setTimeout(() => {
-                        showCustomAlert("Hata", "Sunucu bağlantı hatası oluştu.", () => setCustomAlertVisible(false), false, "Tamam", "", false);
+                        showInfoAlert("Hata", "Sunucu bağlantı hatası oluştu.");
                     }, 500);
                 }
             },
@@ -147,35 +110,24 @@ export default function SearchScreen() {
             "Kaydı Sil",
             "Bu teşhis kaydını ve ilişkili fotoğrafı kalıcı olarak silmek istediğinizden emin misiniz?",
             async () => {
-                setCustomAlertVisible(false);
+                hideCustomAlert();
                 try {
-                    const response = await fetch(`${API_BASE}/api/history/${id}`, {
-                        method: 'DELETE'
-                    });
-                    const data = await response.json();
+                    const data = await api.deleteDiagnosis(id, userUuid);
                     if (data.basarili) {
                         setModalVisible(false);
                         setSelectedItem(null);
                         setHistory(prev => prev.filter(item => item.id !== id));
                         setTimeout(() => {
-                            showCustomAlert(
-                                "Başarılı",
-                                "Teşhis kaydı başarıyla silindi.",
-                                () => setCustomAlertVisible(false),
-                                false,
-                                "Tamam",
-                                "",
-                                false
-                            );
+                            showInfoAlert("Başarılı", "Teşhis kaydı başarıyla silindi.");
                         }, 500);
                     } else {
                         setTimeout(() => {
-                            showCustomAlert("Hata", "Kayıt silinemedi: " + data.hata, () => setCustomAlertVisible(false), false, "Tamam", "", false);
+                            showInfoAlert("Hata", "Kayıt silinemedi: " + data.hata);
                         }, 500);
                     }
-                } catch (error) {
+                } catch (_error) {
                     setTimeout(() => {
-                        showCustomAlert("Hata", "Sunucu bağlantı hatası oluştu.", () => setCustomAlertVisible(false), false, "Tamam", "", false);
+                        showInfoAlert("Hata", "Sunucu bağlantı hatası oluştu.");
                     }, 500);
                 }
             },
@@ -206,7 +158,7 @@ export default function SearchScreen() {
         const statusBg = isHealthy ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 59, 48, 0.1)';
         const statusText = isHealthy ? 'Sağlıklı' : (item.hastalik_adi_tr || 'Hastalık Teşhisi');
 
-        const imageUri = `${API_BASE}/uploads/${item.resim_yolu}`;
+        const imageUri = api.imageUrl(item.resim_yolu);
 
         return (
             <TouchableOpacity 
@@ -307,17 +259,7 @@ export default function SearchScreen() {
             />
 
             {/* ÖZEL ONAY MODALI */}
-            <CustomAlert
-                visible={customAlertVisible}
-                title={customAlertConfig.title}
-                message={customAlertConfig.message}
-                confirmText={customAlertConfig.confirmText}
-                cancelText={customAlertConfig.cancelText}
-                isDestructive={customAlertConfig.isDestructive}
-                showCancel={customAlertConfig.showCancel}
-                onConfirm={customAlertConfig.onConfirm}
-                onCancel={() => setCustomAlertVisible(false)}
-            />
+            <CustomAlert {...customAlertProps} />
         </SafeAreaView>
     );
 }

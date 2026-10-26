@@ -3,14 +3,12 @@ import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 
 import MyPlantsScreen from '../screens/MyPlantsScreen';
 import CommunityScreen from '../screens/CommunityScreen';
 import SearchScreen from '../screens/SearchScreen';
 import MenuScreen from '../screens/MenuScreen';
-import CameraScreen from '../screens/CameraScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -27,9 +25,7 @@ const CustomTabBarButton = ({ children, onPress, styles }) => (
 );
 
 export default function TabNavigator() {
-    const { theme } = useTheme();
-    const isDark = theme === 'dark';
-    const colors = isDark ? Colors.dark : Colors.light;
+    const { colors } = useTheme();
 
     // Edge-to-edge: sistem navigasyon çubuğu görünürse tab bar onun üstünde kalsın
     const { bottom: bottomInset } = useSafeAreaInsets();

@@ -1,16 +1,12 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, StatusBar, Image, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, StatusBar, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
-import { Colors } from '../theme/colors';
 
-const { width: screenWidth } = Dimensions.get('window');
 
 export default function DiagnosisResultScreen({ route, navigation }) {
-    const { theme } = useTheme();
-    const isDark = theme === 'dark';
-    const colors = isDark ? Colors.dark : Colors.light;
+    const { isDark, colors } = useTheme();
     const insets = useSafeAreaInsets();
     const styles = useMemo(() => getDynamicStyles(colors, isDark), [colors, isDark]);
 

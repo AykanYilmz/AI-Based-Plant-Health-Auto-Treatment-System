@@ -6,9 +6,8 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 
-import { Colors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
-import { API_BASE } from '../config';
+import { api } from '../services/ApiClient';
 import { useWeather } from '../hooks/useWeather';
 import getDynamicStyles, { SCROLL_WIDTH, GAP } from '../styles/myPlantsStyles';
 import { useAuth } from '../context/AuthContext';
@@ -20,12 +19,12 @@ import DiagnosisDetailModal from '../components/myplants/DiagnosisDetailModal';
 import DonationModal from '../components/myplants/DonationModal';
 import WeatherBackgroundVideo from '../components/myplants/WeatherBackgroundVideo';
 import CustomAlert from '../components/CustomAlert';
+import { useCustomAlert } from '../hooks/useCustomAlert';
 
 export default function MyPlantsScreen({ navigation }) {
-    const { theme, toggleTheme } = useTheme();
+    const { isDark, colors, toggleTheme } = useTheme();
     const { user } = useAuth();
-    const isDark = theme === 'dark';
-    const colors = isDark ? Colors.dark : Colors.light;
+    const userUuid = user?.uuid;
     const styles = useMemo(() => getDynamicStyles(colors), [colors]);
 
     // Hava durumu (ayrı hook)
@@ -46,39 +45,16 @@ export default function MyPlantsScreen({ navigation }) {
     const [modalVisible, setModalVisible]     = useState(false);
     const [donationVisible, setDonationVisible] = useState(false);
 
-    // Özel Onay Modalı State'leri
-    const [customAlertVisible, setCustomAlertVisible] = useState(false);
-    const [customAlertConfig, setCustomAlertConfig] = useState({
-        title: '',
-        message: '',
-        confirmText: '',
-        cancelText: '',
-        isDestructive: false,
-        showCancel: true,
-        onConfirm: () => {},
-    });
-
-    const showCustomAlert = (title, message, onConfirm, isDestructive = false, confirmText = 'Onayla', cancelText = 'Vazgeç', showCancel = true) => {
-        setCustomAlertConfig({
-            title,
-            message,
-            onConfirm,
-            isDestructive,
-            confirmText,
-            cancelText,
-            showCancel
-        });
-        setCustomAlertVisible(true);
-    };
+    // Özel onay modalı
+    const { showCustomAlert, showInfoAlert, hideCustomAlert, customAlertProps } = useCustomAlert();
 
     useFocusEffect(
         useCallback(() => {
             let isActive = true;
             const fetchHistory = async () => {
-                if (!user?.uuid) return;
+                if (!userUuid) return;
                 try {
-                    const response = await fetch(`${API_BASE}/api/history?uuid=${user.uuid}`);
-                    const data = await response.json();
+                    const data = await api.getHistory(userUuid);
                     if (data.basarili && isActive) {
                         setHistory(data.gecmis || []);
                     }
@@ -90,7 +66,7 @@ export default function MyPlantsScreen({ navigation }) {
             };
             fetchHistory();
             return () => { isActive = false; };
-        }, [user?.uuid])
+        }, [userUuid])
     );
 
     // Kayıt silme
@@ -99,34 +75,25 @@ export default function MyPlantsScreen({ navigation }) {
             'Kaydı Sil',
             'Bu teşhis kaydını ve ilişkili fotoğrafı kalıcı olarak silmek istediğinizden emin misiniz?',
             async () => {
-                setCustomAlertVisible(false);
+                hideCustomAlert();
                 try {
-                    const response = await fetch(`${API_BASE}/api/history/${id}`, { method: 'DELETE' });
-                    const data = await response.json();
+                    const data = await api.deleteDiagnosis(id, userUuid);
                     if (data.basarili) {
                         setModalVisible(false);
                         setSelectedItem(null);
                         setHistory(prev => prev.filter(item => item.id !== id));
                         // Başarılı uyarısı için CustomAlert'i tek butonlu olarak göster
                         setTimeout(() => {
-                            showCustomAlert(
-                                "Başarılı",
-                                "Teşhis kaydı başarıyla silindi.",
-                                () => setCustomAlertVisible(false),
-                                false,
-                                "Tamam",
-                                "",
-                                false
-                            );
+                            showInfoAlert("Başarılı", "Teşhis kaydı başarıyla silindi.");
                         }, 500);
                     } else {
                         setTimeout(() => {
-                            showCustomAlert("Hata", "Kayıt silinemedi: " + data.hata, () => setCustomAlertVisible(false), false, "Tamam", "", false);
+                            showInfoAlert("Hata", "Kayıt silinemedi: " + data.hata);
                         }, 500);
                     }
                 } catch (_err) {
                     setTimeout(() => {
-                        showCustomAlert("Hata", "Sunucu bağlantı hatası oluştu.", () => setCustomAlertVisible(false), false, "Tamam", "", false);
+                        showInfoAlert("Hata", "Sunucu bağlantı hatası oluştu.");
                     }, 500);
                 }
             },
@@ -139,15 +106,7 @@ export default function MyPlantsScreen({ navigation }) {
 
     // Aksiyon handler'ları
     const handleSmartIrrigation = () => {
-        showCustomAlert(
-            'Akıllı Sulama & Tedavi',
-            'Otonom tedavi cihazınızla bağlantı kuruluyor...\nSulama ve organik tedavi döngüsü başarıyla başlatıldı! 💦🌿',
-            () => setCustomAlertVisible(false),
-            false,
-            'Harika!',
-            '',
-            false
-        );
+        showInfoAlert('Akıllı Sulama & Tedavi', 'Otonom tedavi cihazınızla bağlantı kuruluyor...\nSulama ve organik tedavi döngüsü başarıyla başlatıldı! 💦🌿', 'Harika!');
     };
 
     const handlePlantGuide = () => {
@@ -155,7 +114,7 @@ export default function MyPlantsScreen({ navigation }) {
             'Bitki Bakım Rehberi',
             'Desteklenen bitkilerin (Domates, Patates, Mısır, Kiraz, Elma, Üzüm) bakım tüyoları ve hastalık mücadele yöntemleri yükleniyor...',
             () => {
-                setCustomAlertVisible(false);
+                hideCustomAlert();
                 navigation.navigate('Logs');
             },
             false,
@@ -166,15 +125,7 @@ export default function MyPlantsScreen({ navigation }) {
     };
 
     const handleAIBotanist = () => {
-        showCustomAlert(
-            'AI Botanist Chatbot',
-            'Yapay zeka tarım danışmanınız hazır! Sormak istediğiniz soruları buraya iletebilirsiniz.',
-            () => setCustomAlertVisible(false),
-            false,
-            'Sohbete Başla',
-            '',
-            false
-        );
+        showInfoAlert('AI Botanist Chatbot', 'Yapay zeka tarım danışmanınız hazır! Sormak istediğiniz soruları buraya iletebilirsiniz.', 'Sohbete Başla');
     };
 
     const handleScroll = (event) => {
@@ -327,7 +278,7 @@ export default function MyPlantsScreen({ navigation }) {
                                         key={item.id}
                                         name={item.bitki_adi_tr || item.bitki_adi}
                                         status={isHealthy ? 'Sağlıklı (Bakım gerekmiyor)' : (item.hastalik_adi_tr || 'Teşhis Edildi')}
-                                        imageUrl={`${API_BASE}/uploads/${item.resim_yolu}`}
+                                        imageUrl={api.imageUrl(item.resim_yolu)}
                                         needs={isHealthy ? [] : ['fertilizer']}
                                         styles={styles}
                                         colors={colors}
@@ -362,17 +313,7 @@ export default function MyPlantsScreen({ navigation }) {
             />
 
             {/* ÖZEL ONAY MODALI */}
-            <CustomAlert
-                visible={customAlertVisible}
-                title={customAlertConfig.title}
-                message={customAlertConfig.message}
-                confirmText={customAlertConfig.confirmText}
-                cancelText={customAlertConfig.cancelText}
-                isDestructive={customAlertConfig.isDestructive}
-                showCancel={customAlertConfig.showCancel}
-                onConfirm={customAlertConfig.onConfirm}
-                onCancel={() => setCustomAlertVisible(false)}
-            />
+            <CustomAlert {...customAlertProps} />
 
             {/* KONUM İZNİ AÇIKLAMA MODALI (Sistem penceresinden önce gösterilir) */}
             <CustomAlert

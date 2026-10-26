@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { useColorScheme, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { Colors } from './colors';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -39,11 +40,18 @@ export const ThemeProvider = ({ children }) => {
         setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
     };
 
+    // Ekranların her biri renk paletini ayrıca hesaplamasın diye hazır olarak sağlanır
+    const value = useMemo(() => {
+        const isDark = theme === 'dark';
+        return { theme, isDark, colors: isDark ? Colors.dark : Colors.light, toggleTheme };
+    }, [theme]);
+
     return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+        <ThemeContext.Provider value={value}>
             {children}
         </ThemeContext.Provider>
     );
 };
 
+/** @returns {{ theme: 'light'|'dark', isDark: boolean, colors: typeof Colors.light, toggleTheme: Function }} */
 export const useTheme = () => useContext(ThemeContext);

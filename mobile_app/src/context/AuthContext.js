@@ -1,15 +1,35 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE } from '../config';
+import { api } from '../services/ApiClient';
 
 const AuthContext = createContext();
 
+const STORAGE_KEYS = {
+    session: 'userSession',
+    guestDeviceUuid: 'guestDeviceUuid',
+    savedEmail: 'savedEmail',
+    savedPassword: 'savedPassword',
+    rememberMe: 'rememberMe',
+};
+
+const NETWORK_ERROR = 'Sunucuya bağlanılamadı. Lütfen ağınızı kontrol edin.';
+
 const generateUUID = () => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
 };
+
+async function getOrCreateGuestDeviceUuid({ forceNew = false } = {}) {
+    let deviceUuid = forceNew ? null : await AsyncStorage.getItem(STORAGE_KEYS.guestDeviceUuid);
+    if (!deviceUuid) {
+        deviceUuid = generateUUID();
+        await AsyncStorage.setItem(STORAGE_KEYS.guestDeviceUuid, deviceUuid);
+    }
+    return deviceUuid;
+}
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -20,7 +40,7 @@ export const AuthProvider = ({ children }) => {
         const loadSession = async () => {
             try {
                 // Otomatik giriş devre dışı bırakıldı. Uygulama her açıldığında giriş ekranı gösterilecek.
-                await AsyncStorage.removeItem('userSession');
+                await AsyncStorage.removeItem(STORAGE_KEYS.session);
             } catch (err) {
                 console.log('Oturum yükleme hatası:', err);
             } finally {
@@ -30,129 +50,77 @@ export const AuthProvider = ({ children }) => {
         loadSession();
     }, []);
 
-    // Giriş Yap
-    const login = async (email, password, rememberMe) => {
+    /**
+     * Backend isteğini çalıştırır; başarılıysa oturumu açar.
+     * Tüm auth işlemlerinde tekrarlanan "çağır → kaydet → hata mesajı" akışını tek yerde toplar.
+     */
+    const authenticate = async (request, fallbackError, onSuccess) => {
         try {
-            const response = await fetch(`${API_BASE}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
-            });
-            const data = await response.json();
-
-            if (data.basarili) {
-                await AsyncStorage.setItem('userSession', JSON.stringify(data.user));
-                
-                if (rememberMe) {
-                    await AsyncStorage.setItem('savedEmail', email);
-                    await AsyncStorage.setItem('savedPassword', password);
-                    await AsyncStorage.setItem('rememberMe', 'true');
-                } else {
-                    await AsyncStorage.removeItem('savedEmail');
-                    await AsyncStorage.removeItem('savedPassword');
-                    await AsyncStorage.removeItem('rememberMe');
-                }
-                
-                setUser(data.user);
-                return { basarili: true };
-            } else {
-                return { basarili: false, hata: data.hata || 'Giriş yapılamadı.' };
+            const data = await request();
+            if (!data.basarili) {
+                return { basarili: false, hata: data.hata || fallbackError };
             }
+            await AsyncStorage.setItem(STORAGE_KEYS.session, JSON.stringify(data.user));
+            if (onSuccess) await onSuccess(data.user);
+            setUser(data.user);
+            return { basarili: true };
         } catch (err) {
-            console.log('Giriş API Hatası:', err);
-            return { basarili: false, hata: 'Sunucuya bağlanılamadı. Lütfen ağınızı kontrol edin.' };
+            console.log('Auth API Hatası:', err);
+            return { basarili: false, hata: NETWORK_ERROR };
         }
     };
+
+    // Giriş Yap
+    const login = (email, password, rememberMe) => authenticate(
+        () => api.login(email, password),
+        'Giriş yapılamadı.',
+        async () => {
+            if (rememberMe) {
+                await AsyncStorage.setItem(STORAGE_KEYS.savedEmail, email);
+                await AsyncStorage.setItem(STORAGE_KEYS.savedPassword, password);
+                await AsyncStorage.setItem(STORAGE_KEYS.rememberMe, 'true');
+            } else {
+                await AsyncStorage.multiRemove([STORAGE_KEYS.savedEmail, STORAGE_KEYS.savedPassword, STORAGE_KEYS.rememberMe]);
+            }
+        }
+    );
 
     // Kayıt Ol
-    const register = async (name, email, password) => {
-        try {
-            const response = await fetch(`${API_BASE}/api/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, password }),
-            });
-            const data = await response.json();
-
-            if (data.basarili) {
-                await AsyncStorage.setItem('userSession', JSON.stringify(data.user));
-                setUser(data.user);
-                return { basarili: true };
-            } else {
-                return { basarili: false, hata: data.hata || 'Kayıt yapılamadı.' };
-            }
-        } catch (err) {
-            console.log('Kayıt API Hatası:', err);
-            return { basarili: false, hata: 'Sunucuya bağlanılamadı. Lütfen ağınızı kontrol edin.' };
-        }
-    };
+    const register = (name, email, password) => authenticate(
+        () => api.register(name, email, password),
+        'Kayıt yapılamadı.'
+    );
 
     // Misafir Girişi
-    const guestLogin = async () => {
-        try {
-            // Cihaz için kayıtlı UUID var mı kontrol et, yoksa üret
-            let deviceUuid = await AsyncStorage.getItem('guestDeviceUuid');
-            if (!deviceUuid) {
-                deviceUuid = generateUUID();
-                await AsyncStorage.setItem('guestDeviceUuid', deviceUuid);
-            }
+    const guestLogin = () => authenticate(
+        async () => {
+            const result = await api.guestLogin(await getOrCreateGuestDeviceUuid());
+            if (result.httpStatus !== 403) return result;
 
-            const response = await fetch(`${API_BASE}/api/auth/guest`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ deviceUuid }),
-            });
-            const data = await response.json();
-
-            if (data.basarili) {
-                await AsyncStorage.setItem('userSession', JSON.stringify(data.user));
-                setUser(data.user);
-                return { basarili: true };
-            } else {
-                return { basarili: false, hata: data.hata || 'Misafir oturumu açılamadı.' };
-            }
-        } catch (err) {
-            console.log('Misafir Giriş API Hatası:', err);
-            return { basarili: false, hata: 'Sunucuya bağlanılamadı. Lütfen ağınızı kontrol edin.' };
-        }
-    };
+            // 403: Bu cihazın misafir kimliği daha önce kayıtlı hesaba yükseltilmiş; o hesaba
+            // şifresiz girilemeyeceği için yeni bir misafir kimliği ile tekrar dene.
+            return api.guestLogin(await getOrCreateGuestDeviceUuid({ forceNew: true }));
+        },
+        'Misafir oturumu açılamadı.'
+    );
 
     // Hesabı Yükselt (Misafir -> Kayıtlı Üye)
-    const upgrade = async (name, email, password) => {
-        try {
-            if (!user || user.user_type !== 'guest') {
-                return { basarili: false, hata: 'Aktif bir misafir oturumu bulunamadı.' };
-            }
-
-            const response = await fetch(`${API_BASE}/api/auth/upgrade`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    deviceUuid: user.uuid,
-                    name,
-                    email,
-                    password
-                }),
-            });
-            const data = await response.json();
-
-            if (data.basarili) {
-                await AsyncStorage.setItem('userSession', JSON.stringify(data.user));
-                setUser(data.user);
-                return { basarili: true };
-            } else {
-                return { basarili: false, hata: data.hata || 'Hesap yükseltilemedi.' };
-            }
-        } catch (err) {
-            console.log('Yükseltme API Hatası:', err);
-            return { basarili: false, hata: 'Sunucuya bağlanılamadı. Lütfen ağınızı kontrol edin.' };
+    const upgrade = (name, email, password) => {
+        if (!user || user.user_type !== 'guest') {
+            return Promise.resolve({ basarili: false, hata: 'Aktif bir misafir oturumu bulunamadı.' });
         }
+        return authenticate(
+            () => api.upgradeGuest(user.uuid, name, email, password),
+            'Hesap yükseltilemedi.',
+            // Bu kimlik artık kayıtlı hesaba ait; bir sonraki misafir girişi yeni kimlikle yapılır
+            () => AsyncStorage.removeItem(STORAGE_KEYS.guestDeviceUuid)
+        );
     };
 
     // Çıkış Yap
     const logout = async () => {
         try {
-            await AsyncStorage.removeItem('userSession');
+            await AsyncStorage.removeItem(STORAGE_KEYS.session);
             setUser(null);
         } catch (err) {
             console.log('Oturum kapatma hatası:', err);

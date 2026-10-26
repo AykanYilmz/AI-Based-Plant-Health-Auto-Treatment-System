@@ -1,12 +1,9 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { Colors } from '../theme/colors';
 
 export default function CommunityScreen() {
-    const { theme } = useTheme();
-    const isDark = theme === 'dark';
-    const colors = isDark ? Colors.dark : Colors.light;
+    const { colors } = useTheme();
     
     // Dinamik stiller
     const styles = useMemo(() => getDynamicStyles(colors), [colors]);

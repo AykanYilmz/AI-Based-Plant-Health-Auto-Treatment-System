@@ -14,40 +14,17 @@ import {
     KeyboardAvoidingView,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { Colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CustomAlert from '../components/CustomAlert';
+import { useCustomAlert } from '../hooks/useCustomAlert';
 
 export default function MenuScreen() {
-    const { theme, toggleTheme } = useTheme();
+    const { isDark, colors, toggleTheme } = useTheme();
     const { user, upgrade, logout } = useAuth();
-    const isDark = theme === 'dark';
-    const colors = isDark ? Colors.dark : Colors.light;
 
-    // Özel Onay Modalı State'leri
-    const [customAlertVisible, setCustomAlertVisible] = useState(false);
-    const [customAlertConfig, setCustomAlertConfig] = useState({
-        title: '',
-        message: '',
-        confirmText: '',
-        cancelText: '',
-        isDestructive: false,
-        onConfirm: () => {},
-    });
-
-    const showCustomAlert = (title, message, onConfirm, isDestructive = false, confirmText = 'Onayla', cancelText = 'Vazgeç', showCancel = true) => {
-        setCustomAlertConfig({
-            title,
-            message,
-            onConfirm,
-            isDestructive,
-            confirmText,
-            cancelText,
-            showCancel
-        });
-        setCustomAlertVisible(true);
-    };
+    // Özel onay modalı
+    const { showCustomAlert, showInfoAlert, hideCustomAlert, customAlertProps } = useCustomAlert();
 
     // Modalların state'leri
     const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
@@ -102,15 +79,7 @@ export default function MenuScreen() {
             setConfirmPassword('');
             
             setTimeout(() => {
-                showCustomAlert(
-                    'Başarılı',
-                    'Hesabınız başarıyla yükseltildi! Artık şifrenizle giriş yapabilirsiniz.',
-                    () => setCustomAlertVisible(false),
-                    false,
-                    'Tamam',
-                    '',
-                    false
-                );
+                showInfoAlert('Başarılı', 'Hesabınız başarıyla yükseltildi! Artık şifrenizle giriş yapabilirsiniz.');
             }, 500);
         } else {
             setErrorMsg(res.hata);
@@ -122,7 +91,7 @@ export default function MenuScreen() {
             'Çıkış Yap',
             'Oturumunuzu sonlandırmak istediğinizden emin misiniz?',
             async () => {
-                setCustomAlertVisible(false);
+                hideCustomAlert();
                 await logout();
             },
             true,
@@ -343,17 +312,7 @@ export default function MenuScreen() {
             </Modal>
 
             {/* ÖZEL ONAY MODALI */}
-            <CustomAlert
-                visible={customAlertVisible}
-                title={customAlertConfig.title}
-                message={customAlertConfig.message}
-                confirmText={customAlertConfig.confirmText}
-                cancelText={customAlertConfig.cancelText}
-                isDestructive={customAlertConfig.isDestructive}
-                showCancel={customAlertConfig.showCancel}
-                onConfirm={customAlertConfig.onConfirm}
-                onCancel={() => setCustomAlertVisible(false)}
-            />
+            <CustomAlert {...customAlertProps} />
         </SafeAreaView>
     );
 }

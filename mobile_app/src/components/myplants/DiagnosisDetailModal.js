@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Animated, ScrollView, Image, TouchableOpacity, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSwipeModal } from '../../hooks/useSwipeModal';
-import { API_BASE } from '../../config';
+import { api } from '../../services/ApiClient';
 
 /**
  * DiagnosisDetailModal — Teşhis geçmişindeki bir kaydın detaylarını
@@ -105,7 +105,7 @@ export default function DiagnosisDetailModal({ visible, selectedItem, onClose, o
                             onPress={() => setZoomVisible(true)}
                         >
                             <Image
-                                source={{ uri: `${API_BASE}/uploads/${selectedItem.resim_yolu}` }}
+                                source={{ uri: api.imageUrl(selectedItem.resim_yolu) }}
                                 style={styles.modalImage}
                             />
                             <View style={styles.imageFloatingBadge}>
@@ -197,7 +197,7 @@ export default function DiagnosisDetailModal({ visible, selectedItem, onClose, o
                             <MaterialCommunityIcons name="close" size={28} color="#FFFFFF" />
                         </TouchableOpacity>
                         <Image 
-                            source={{ uri: `${API_BASE}/uploads/${selectedItem.resim_yolu}` }} 
+                            source={{ uri: api.imageUrl(selectedItem.resim_yolu) }} 
                             style={styles.zoomImage} 
                             resizeMode="contain"
                         />

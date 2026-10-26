@@ -6,12 +6,9 @@ import {
     TouchableOpacity,
     TouchableWithoutFeedback,
     StyleSheet,
-    Dimensions,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { Colors } from '../theme/colors';
 
-const { width } = Dimensions.get('window');
 
 export default function CustomAlert({
     visible,
@@ -24,9 +21,7 @@ export default function CustomAlert({
     isDestructive = false,
     showCancel = true,
 }) {
-    const { theme } = useTheme();
-    const isDark = theme === 'dark';
-    const colors = isDark ? Colors.dark : Colors.light;
+    const { isDark, colors } = useTheme();
 
     const styles = useMemo(() => getDynamicStyles(colors, isDark), [colors, isDark]);
 
