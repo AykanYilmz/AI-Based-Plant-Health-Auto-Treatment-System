@@ -60,9 +60,9 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
   - `backend/logs/app.log` (takipten çıkarılıp `.gitignore`'a eklenmeli)
   - `.idea/` (IDE ayarları)
   - Yüzlerce MB'lık model dosyaları → Git LFS'e taşınmalı
-- [ ] **19. Backend adresi koda gömülü** — `mobile_app/src/config.js`
+- [x] **19. Backend adresi koda gömülü** — `mobile_app/src/config.js`
   - IP her değiştiğinde dosya düzenlenip commit'leniyor; ekipte herkes birbirinin IP'sini eziyor.
-  - Çözüm: `EXPO_PUBLIC_API_URL` ortam değişkeni (`.env`) veya `app.config.js` ile okunmalı.
+  - ✅ Çözüldü: Adres artık otomatik — önce `EXPO_PUBLIC_API_URL`, yoksa Metro'nun çalıştığı bilgisayarın IP'si (`Constants.expoConfig.hostUri`), o da yoksa emülatör varsayılanı.
 - [ ] **20. Test kapsamı çok düşük** — Sadece 4 birim testi var (`diagnoseController.test.js`, hepsi geçiyor). Auth, diagnose akışı ve Python pipeline için test yok.
 - [ ] **21. Lint hataları**
   - `MyPlantsScreen.js`: React Compiler hatası (`useCallback` bağımlılığı `user?.uuid`)

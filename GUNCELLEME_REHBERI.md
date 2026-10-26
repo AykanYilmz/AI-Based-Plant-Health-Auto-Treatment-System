@@ -77,18 +77,18 @@ npm install
 
 > ⚠️ **Expo SDK 58:** Proje Expo SDK 58'e (React Native 0.88) yükseltildi. Telefonunuzdaki **Expo Go uygulamasının da SDK 58 sürümü** olmalıdır. Eski `expo-av` paketi kaldırıldı; hava durumu videoları artık `expo-video` ile oynatılıyor. Branch'i çektikten sonra `mobile_app` içinde mutlaka `npm install` çalıştırın.
 
-### 🌐 IP Adresi Güncelleme (Manuel Yöntem)
-Fiziksel cihazda (Expo Go) test yaparken mobil uygulamanın bilgisayarınızda çalışan backend sunucusuna bağlanabilmesi için bilgisayarınızın yerel WiFi IP adresini elle tanımlamanız gerekmektedir. 
+### 🌐 Backend Adresi (Otomatik — IP Yazmaya Gerek Yok)
+Artık kimsenin `config.js` içine kendi IP adresini yazmasına gerek yoktur. `mobile_app/src/config.js` backend adresini **otomatik** bulur: Expo Go uygulamayı hangi bilgisayardaki Metro sunucusundan yüklediyse, backend'e de aynı bilgisayarın IP'si üzerinden (port `3000`) bağlanır. Telefon ve bilgisayarın aynı ağda olması yeterlidir.
 
-`mobile_app/src/config.js` dosyasında şu yapı kullanılmaktadır:
-```javascript
-// Backend API URL (Fiziksel cihaz için bilgisayarın yerel WiFi IP adresi)
-// Bilgisayarınızın IP adresi her değiştiğinde sadece burayı güncellemeniz yeterlidir.
-export const API_BASE = 'http://192.168.1.3:3000'; // Bilgisayarınızın yerel IP adresi
+Farklı bir backend'e (ör. canlı sunucu) bağlanmak isterseniz `mobile_app/.env.local` dosyası oluşturun (git'e girmez):
+```env
+EXPO_PUBLIC_API_URL=https://sunucu-adresi.com
 ```
-Bu sayede bilgisayarınızın IP adresi değiştiğinde sadece bu dosyadan güncelleyerek fiziksel cihazınızda testi sorunsuz bir şekilde sürdürebilirsiniz.
+`.env.local` değiştikten sonra Expo'yu yeniden başlatın.
 
-Bilgisayarınızda Hamachi, VMware, WSL gibi birden fazla ağ adaptörü varsa Expo yanlış IP'yi seçebilir. Bu durumda Expo'yu IP'yi sabitleyerek başlatın (PowerShell):
+> ⚠️ `npx expo start --tunnel` ile çalışırken otomatik adres backend'e ulaşamaz; bu durumda `EXPO_PUBLIC_API_URL` tanımlanmalıdır.
+
+Bilgisayarınızda Hamachi, VMware, WSL gibi birden fazla ağ adaptörü varsa Expo yanlış IP'yi seçebilir (telefon uygulamayı hiç yükleyemez). Bu durumda Expo'yu IP'yi sabitleyerek başlatın (PowerShell):
 ```powershell
 $env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.1.X"; npx expo start --lan
 ```
