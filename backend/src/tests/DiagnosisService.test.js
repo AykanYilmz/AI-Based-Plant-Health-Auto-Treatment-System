@@ -63,6 +63,22 @@ describe('DiagnosisService', () => {
             expect(deps.diagnosisRepository.create).not.toHaveBeenCalled();
         });
 
+        it('never recommends a treatment for an uncertain disease result', async () => {
+            const { service, deps } = createService();
+            deps.aiClient.predict.mockResolvedValue(successfulPrediction({
+                katman3_hastalik: { durum: 'belirsiz', hastalik: null, saglikli: null, confidence: 48.2, top3: [] },
+            }));
+
+            const result = await service.diagnose(Buffer.from('raw'), 'user-1');
+
+            expect(deps.plantRepository.findDisease).not.toHaveBeenCalled();
+            expect(deps.diagnosisRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+                diseaseId: null, diseaseStatus: 'belirsiz',
+            }));
+            expect(result.tedavi_onerisi).toMatch(/kesin olmadığı için ilaç önerisi verilmedi/);
+            expect(result.healthStatus).toMatchObject({ status: 'belirsiz', isHealthy: null, diseaseDisplayName: null });
+        });
+
         it('falls back to the catalog treatment when the database is offline', async () => {
             const { service, deps } = createService({ connected: false });
             deps.aiClient.predict.mockResolvedValue(successfulPrediction());

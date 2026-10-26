@@ -75,6 +75,40 @@ class Database {
         }
     }
 
+    /**
+     * Havuzdan tek bir bağlantı alıp verilen fonksiyona verir (oturum düzeyinde kilit gibi
+     * aynı bağlantıda yapılması gereken işlemler için). Bağlantı her durumda havuza iade edilir.
+     * @template T
+     * @param {(client: { query: Function }) => Promise<T>} fn
+     * @returns {Promise<T>}
+     */
+    async withClient(fn) {
+        const client = await this.#pool.connect();
+        try {
+            return await fn(client);
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
+     * Fonksiyonu tek bir transaction içinde çalıştırır; hata olursa tüm değişiklikler geri alınır.
+     * Fonksiyona verilen nesne repository'lere `db` yerine geçirilebilir (aynı `query` arayüzü).
+     */
+    async transaction(fn) {
+        return this.withClient(async (client) => {
+            await client.query('BEGIN');
+            try {
+                const result = await fn(client);
+                await client.query('COMMIT');
+                return result;
+            } catch (error) {
+                await client.query('ROLLBACK');
+                throw error;
+            }
+        });
+    }
+
     async close() {
         await this.#pool.end();
         this.#connected = false;

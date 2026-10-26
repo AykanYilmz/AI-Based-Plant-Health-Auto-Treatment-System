@@ -2,6 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const fs = require('fs');
+const http = require('http');
+const https = require('https');
+const { requireHttps, isHttpsRequired } = require('./middlewares/requireHttps');
 const createRateLimiters = require('./middlewares/rateLimiters');
 const logger = require('./utils/logger');
 const createDiagnoseRoutes = require('./routes/diagnoseRoutes');
@@ -51,6 +55,9 @@ function createApp() {
     }
 
     // ─── Güvenlik Middleware ─────────────────────────────────
+    if (isHttpsRequired()) {
+        app.use(requireHttps);
+    }
     app.use(helmet({
         // Görseller Expo web (farklı port) tarafından da yüklenebilsin
         crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -82,6 +89,22 @@ function createApp() {
     return app;
 }
 
+/**
+ * TLS_CERT_PATH ve TLS_KEY_PATH verilmişse HTTPS, aksi halde HTTP sunucusu oluşturur.
+ * Canlıda genellikle TLS'i Caddy/nginx gibi bir ters proxy sonlandırır; bu durumda HTTP yeterlidir.
+ */
+function createServer(app) {
+    const { TLS_CERT_PATH, TLS_KEY_PATH } = process.env;
+    if (TLS_CERT_PATH && TLS_KEY_PATH) {
+        const server = https.createServer({
+            cert: fs.readFileSync(TLS_CERT_PATH),
+            key: fs.readFileSync(TLS_KEY_PATH),
+        }, app);
+        return { server, protocol: 'https' };
+    }
+    return { server: http.createServer(app), protocol: 'http' };
+}
+
 async function startServer() {
     logger.info('\n🌱 VerdantAI Backend başlatılıyor...\n');
 
@@ -96,9 +119,14 @@ async function startServer() {
         logger.error('❌ AI Daemon yüklenemedi! Sunucu kısıtlı modda (offline/no-ai) başlatılıyor.');
     }
 
-    // 3. Express sunucusunu başlat
-    createApp().listen(PORT, '0.0.0.0', () => {
-        logger.success(`🚀 Sunucu http://localhost:${PORT} adresinde başarıyla çalışıyor`);
+    // 3. Express sunucusunu başlat (sertifika verilmişse doğrudan HTTPS)
+    const { server, protocol } = createServer(createApp());
+    if (isHttpsRequired() && protocol === 'http' && !process.env.TRUST_PROXY) {
+        logger.warn('⚠️ HTTPS zorunlu ama sunucu HTTP çalışıyor ve TRUST_PROXY ayarlı değil: tüm API istekleri reddedilecek. TLS_CERT_PATH/TLS_KEY_PATH verin veya HTTPS sonlandıran bir ters proxy arkasında TRUST_PROXY ayarlayın.');
+    }
+    server.listen(PORT, '0.0.0.0', () => {
+        logger.success(`🚀 Sunucu ${protocol}://localhost:${PORT} adresinde başarıyla çalışıyor`);
+        if (isHttpsRequired()) logger.info('🔐 HTTPS zorunlu: şifrelenmemiş istekler reddediliyor.');
         logger.info(`📡 API Endpoint'leri:`);
         logger.info(`   POST /api/auth/{register,login,guest,refresh,logout,upgrade} → Oturum işlemleri`);
         logger.info(`   POST /api/diagnose  → Fotoğraf yükle ve teşhis al 🔒`);

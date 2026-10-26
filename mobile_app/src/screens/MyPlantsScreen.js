@@ -8,6 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { useTheme } from '../theme/ThemeContext';
 import { api } from '../services/ApiClient';
+import { describeDiagnosis } from '../utils/diagnosisStatus';
 import { useWeather } from '../hooks/useWeather';
 import getDynamicStyles, { SCROLL_WIDTH, GAP } from '../styles/myPlantsStyles';
 import { useAuth } from '../context/AuthContext';
@@ -272,14 +273,14 @@ export default function MyPlantsScreen({ navigation }) {
                             </View>
                         ) : (
                             history.slice(0, 5).map((item) => {
-                                const isHealthy = item.hastalik_durum === 'saglikli' || (item.hastalik_durum === 'tespit_edildi' && item.hastalik_adi === 'Healthy');
+                                const diagnosis = describeDiagnosis(item);
                                 return (
                                     <PlantItem
                                         key={item.id}
                                         name={item.bitki_adi_tr || item.bitki_adi}
-                                        status={isHealthy ? 'Sağlıklı (Bakım gerekmiyor)' : (item.hastalik_adi_tr || 'Teşhis Edildi')}
+                                        status={diagnosis.isHealthy ? 'Sağlıklı (Bakım gerekmiyor)' : diagnosis.label}
                                         imageSource={api.imageSource(item.resim_yolu)}
-                                        needs={isHealthy ? [] : ['fertilizer']}
+                                        needs={diagnosis.kind === 'disease' ? ['fertilizer'] : []}
                                         styles={styles}
                                         colors={colors}
                                         onPress={() => {

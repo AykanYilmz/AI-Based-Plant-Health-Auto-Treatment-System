@@ -71,7 +71,33 @@ JWT_SECRET=buraya-uzun-rastgele-bir-deger
 CORS_ORIGINS=https://verdantai.com,https://admin.verdantai.com
 # Sunucu nginx gibi bir ters proxy arkasındaysa (rate limit gerçek istemci IP'sini görsün diye)
 TRUST_PROXY=1
+# Sunucu TLS'i kendisi sonlandıracaksa sertifika dosyaları (verilirse sunucu HTTPS çalışır)
+TLS_CERT_PATH=/etc/ssl/verdant/fullchain.pem
+TLS_KEY_PATH=/etc/ssl/verdant/privkey.pem
+# HTTPS zorunluluğu: NODE_ENV=production iken varsayılan olarak açıktır; geliştirmede denemek için true
+REQUIRE_HTTPS=true
 ```
+
+### 🔐 HTTPS (Canlıya Çıkarken Zorunlu)
+Canlı ortamda (`NODE_ENV=production`) backend şifrelenmemiş HTTP isteklerini **403 ile reddeder** (`/api/health` hariç). İki kurulum seçeneği vardır:
+
+1. **Ters proxy ile (önerilen):** TLS'i [Caddy](https://caddyserver.com) sonlandırır ve Let's Encrypt sertifikasını otomatik alıp yeniler. `.env`'de `TRUST_PROXY=1` ayarlanır. Örnek `Caddyfile`:
+   ```
+   api.alanadiniz.com {
+       reverse_proxy localhost:3000
+   }
+   ```
+2. **Doğrudan TLS:** `TLS_CERT_PATH` ve `TLS_KEY_PATH` verilirse Node sunucusu HTTPS olarak çalışır (sertifika yenilemesini sizin yapmanız gerekir).
+
+Mobil uygulamanın **canlı (release) sürümü**, `EXPO_PUBLIC_API_URL` tanımlı değilse veya `https://` ile başlamıyorsa açılışta hata verir. Geliştirmede (Expo Go) bu kontrol devre dışıdır.
+
+### 🗄️ Veritabanı Migration'ları
+Şema değişiklikleri `backend/src/database/migrations/` klasöründeki numaralı SQL dosyalarıyla yönetilir ve sunucu açılışında otomatik uygulanır (uygulananlar `schema_migrations` tablosunda tutulur, hiçbir zaman otomatik tablo silinmez).
+```bash
+npm run migrate:status   # Hangi migration'lar uygulandı
+npm run migrate          # Bekleyenleri sunucuyu başlatmadan uygula
+```
+Yeni bir şema değişikliği için bir sonraki numarayla yeni dosya ekleyin (ör. `002_add_plant_notes.sql`); **uygulanmış dosyaları değiştirmeyin**. Bitki/hastalık kataloğu (`src/domain/PlantCatalog.js`) her açılışta veritabanıyla senkronize edilir; tedavi metinlerini orada güncellemeniz yeterlidir.
 
 > `JWT_SECRET` tanımlı değilse sunucu geliştirme ortamında geçici bir anahtar üretir; bu durumda sunucu her yeniden başladığında tüm oturumlar düşer. Canlı ortamda (`NODE_ENV=production`) tanımlı değilse sunucu başlamaz.
 

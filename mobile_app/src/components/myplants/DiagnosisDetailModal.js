@@ -3,6 +3,7 @@ import { View, Text, Animated, ScrollView, Image, TouchableOpacity, Modal } from
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSwipeModal } from '../../hooks/useSwipeModal';
 import { api } from '../../services/ApiClient';
+import { describeDiagnosis } from '../../utils/diagnosisStatus';
 
 /**
  * DiagnosisDetailModal — Teşhis geçmişindeki bir kaydın detaylarını
@@ -47,9 +48,7 @@ export default function DiagnosisDetailModal({ visible, selectedItem, onClose, o
 
     if (!selectedItem) return null;
 
-    const isHealthy =
-        selectedItem.hastalik_durum === 'saglikli' ||
-        selectedItem.hastalik_adi === 'Healthy';
+    const diagnosis = describeDiagnosis(selectedItem);
 
     return (
         <Modal
@@ -147,7 +146,7 @@ export default function DiagnosisDetailModal({ visible, selectedItem, onClose, o
                                 <MaterialCommunityIcons
                                     name="heart-pulse"
                                     size={20}
-                                    color={isHealthy ? '#34C759' : '#FF3B30'}
+                                    color={diagnosis.color}
                                     style={{ marginRight: 8 }}
                                 />
                                 <Text style={styles.sectionTitle}>Hastalık Durumu</Text>
@@ -157,11 +156,11 @@ export default function DiagnosisDetailModal({ visible, selectedItem, onClose, o
                                     <MaterialCommunityIcons name="alert-decagram-outline" size={18} color={colors.textMuted} style={{ marginRight: 8 }} />
                                     <Text style={styles.detailLabel}>Durum</Text>
                                 </View>
-                                <Text style={[styles.detailValue, { color: isHealthy ? '#34C759' : '#FF3B30' }]}>
-                                    {isHealthy ? 'Sağlıklı Bitki' : (selectedItem.hastalik_adi_tr || 'Hastalık Tespit Edildi')}
+                                <Text style={[styles.detailValue, { color: diagnosis.color }]}>
+                                    {diagnosis.isHealthy ? 'Sağlıklı Bitki' : diagnosis.label}
                                 </Text>
                             </View>
-                            {selectedItem.hastalik_durum === 'tespit_edildi' && selectedItem.hastalik_adi !== 'Healthy' && (
+                            {diagnosis.kind === 'disease' && (
                                 <View style={styles.detailRow}>
                                     <View style={styles.rowLabelGroup}>
                                         <MaterialCommunityIcons name="target" size={18} color={colors.textMuted} style={{ marginRight: 8 }} />

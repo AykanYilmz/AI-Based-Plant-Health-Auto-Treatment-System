@@ -2,7 +2,9 @@ const crypto = require('crypto');
 const paths = require('./config/paths');
 const db = require('./config/db');
 const logger = require('./utils/logger');
-const DatabaseInitializer = require('./config/DatabaseInitializer');
+const DatabaseInitializer = require('./database/DatabaseInitializer');
+const Migrator = require('./database/Migrator');
+const CatalogSeeder = require('./database/CatalogSeeder');
 const UserRepository = require('./repositories/UserRepository');
 const PlantRepository = require('./repositories/PlantRepository');
 const DiagnosisRepository = require('./repositories/DiagnosisRepository');
@@ -61,7 +63,7 @@ module.exports = {
     db,
     aiClient,
     refreshTokenRepository,
-    databaseInitializer: new DatabaseInitializer({ db, plantRepository }),
+    databaseInitializer: new DatabaseInitializer({ db, migrator: new Migrator(db), seeder: new CatalogSeeder(db) }),
     authenticate: createAuthenticate(tokenService),
     authController: new AuthController(authService),
     diagnoseController: new DiagnoseController(diagnosisService),

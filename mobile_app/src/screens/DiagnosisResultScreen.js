@@ -33,9 +33,9 @@ export default function DiagnosisResultScreen({ route, navigation }) {
     
     const k3 = {
         durum: result?.healthStatus?.status || 'unknown',
-        saglikli: result?.healthStatus?.isHealthy ?? true,
+        saglikli: result?.healthStatus?.isHealthy ?? null,
         hastalik: result?.healthStatus?.diseaseName || null,
-        hastalik_tr: result?.healthStatus?.diseaseDisplayName || 'Sağlıklı',
+        hastalik_tr: result?.healthStatus?.diseaseDisplayName || null,
         confidence: result?.healthStatus?.confidence || 0,
         dusuk_confidence: result?.healthStatus?.lowConfidence || false,
         mesaj: result?.healthStatus?.message || null,
@@ -171,6 +171,12 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                                 </Text>
                             </View>
                         )}
+                        {k3.durum === 'belirsiz' && (
+                            <View style={[styles.statusBadge, { backgroundColor: '#FF950020' }]}>
+                                <MaterialCommunityIcons name="help-circle" size={16} color="#FF9500" />
+                                <Text style={[styles.statusBadgeText, { color: '#FF9500' }]}>Belirsiz</Text>
+                            </View>
+                        )}
                     </View>
 
                     {k3.durum === 'tespit_edildi' ? (
@@ -197,6 +203,26 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                                     <Text style={styles.warningText}>
                                         Düşük güven oranı — sonuç kesin olmayabilir
                                     </Text>
+                                </View>
+                            )}
+                        </View>
+                    ) : k3.durum === 'belirsiz' ? (
+                        <View>
+                            <View style={styles.comingSoonBox}>
+                                <MaterialCommunityIcons name="help-circle-outline" size={32} color="#FF9500" />
+                                <Text style={styles.comingSoonText}>
+                                    {k3.mesaj || 'Hastalık teşhisi kesin değil. Yaprağı daha yakından ve net çekip tekrar deneyin.'}
+                                </Text>
+                            </View>
+                            {k3.top3.length > 0 && (
+                                <View style={styles.pipelineDetails}>
+                                    <Text style={styles.detailLabel}>Olası sonuçlar (kesin değil):</Text>
+                                    {k3.top3.map((t) => (
+                                        <View key={t.hastalik} style={styles.detailRow}>
+                                            <Text style={styles.detailLabel}>{t.hastalik_tr || t.hastalik}</Text>
+                                            <Text style={styles.detailValue}>%{t.confidence}</Text>
+                                        </View>
+                                    ))}
                                 </View>
                             )}
                         </View>

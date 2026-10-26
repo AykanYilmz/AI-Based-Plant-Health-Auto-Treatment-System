@@ -11,9 +11,17 @@ const BACKEND_PORT = 3000;
  * 2. Geliştirmede (Expo Go), uygulamanın yüklendiği Metro sunucusunun IP adresi kullanılır.
  *    Backend aynı bilgisayarda çalıştığı için telefon Metro'ya hangi IP ile ulaştıysa backend'e de onunla ulaşır.
  * 3. Hiçbiri yoksa emülatör/simülatör varsayılanına düşülür.
+ *
+ * Canlı (release) sürümde EXPO_PUBLIC_API_URL zorunludur ve https:// ile başlamalıdır; aksi halde
+ * uygulama açılırken hata verir. Böylece şifreler ve oturum token'ları asla şifresiz gönderilmez.
  */
 function resolveApiBase() {
     const envUrl = process.env.EXPO_PUBLIC_API_URL;
+
+    if (!__DEV__ && !envUrl?.startsWith('https://')) {
+        throw new Error('Canlı sürümde EXPO_PUBLIC_API_URL tanımlı olmalı ve https:// ile başlamalıdır.');
+    }
+
     if (envUrl) {
         return envUrl.replace(/\/+$/, '');
     }

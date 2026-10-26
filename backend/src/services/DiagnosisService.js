@@ -4,6 +4,8 @@ const { toDiagnosisResponse } = require('../dto/diagnosisDto');
 const { NotFoundError, ServiceUnavailableError, ValidationError } = require('../errors/AppError');
 
 const DEFAULT_TREATMENT = 'Bitki veya hastalık tam tespit edilemediği için tedavi önerisi oluşturulamadı.';
+// Model emin değilken ilaç önerilmez; yanlış ilaç kullanımı bitkiye zarar verebilir
+const UNCERTAIN_TREATMENT = 'Hastalık teşhisi kesin olmadığı için ilaç önerisi verilmedi. Yaprağı daha yakından, gün ışığında ve net bir şekilde çekip tekrar analiz edin. Belirtiler devam ederse bir ziraat mühendisine veya il/ilçe tarım müdürlüğüne danışın.';
 
 /**
  * Teşhis iş akışını yönetir: AI analizi, görselin saklanması, kaydın veritabanına yazılması
@@ -125,6 +127,7 @@ class DiagnosisService {
         const plantKey = PlantCatalog.normalizePlantKey(prediction.katman2_bitki.tur);
         const disease = prediction.katman3_hastalik;
         const diseaseKey = disease.durum === 'tespit_edildi' ? disease.hastalik : null;
+        const fallbackTreatment = disease.durum === 'belirsiz' ? UNCERTAIN_TREATMENT : DEFAULT_TREATMENT;
 
         try {
             if (!(await this.#db.ensureConnected())) {
@@ -138,7 +141,7 @@ class DiagnosisService {
             }
 
             const diseaseRow = diseaseKey ? await this.#plants.findDisease(plant.id, diseaseKey) : null;
-            const treatment = diseaseRow?.treatment_recommendation || DEFAULT_TREATMENT;
+            const treatment = diseaseRow?.treatment_recommendation || fallbackTreatment;
 
             const recordId = await this.#diagnoses.create({
                 userId,
@@ -155,7 +158,7 @@ class DiagnosisService {
             return { recordId, treatment };
         } catch (dbError) {
             logger.warn(`⚠️ Veritabanı kaydı yapılamadı, teşhis çevrimdışı modda tamamlanıyor. Hata: ${dbError.message}`);
-            const treatment = diseaseKey ? PlantCatalog.treatmentFor(diseaseKey) : DEFAULT_TREATMENT;
+            const treatment = diseaseKey ? PlantCatalog.treatmentFor(diseaseKey) : fallbackTreatment;
             return { recordId: null, treatment };
         }
     }

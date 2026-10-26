@@ -203,8 +203,15 @@ class PlantClassifier(KerasClassifier):
 
 
 class DiseaseClassifier(KerasClassifier):
-    """Katman 3: Belirli bir bitki türüne özel hastalık tespiti."""
+    """
+    Katman 3: Belirli bir bitki türüne özel hastalık tespiti.
 
+    Güven eşikleri (yanlış ilaç önerisini önlemek için):
+      - MIN_CONFIDENCE altı      → 'belirsiz': kesin teşhis ve tedavi verilmez, olası sonuçlar listelenir
+      - LOW_CONFIDENCE altı      → 'tespit_edildi' + dusuk_confidence uyarısı
+    """
+
+    MIN_CONFIDENCE = 0.60
     LOW_CONFIDENCE_THRESHOLD = 0.70
 
     def diagnose(self, image):
@@ -212,6 +219,19 @@ class DiseaseClassifier(KerasClassifier):
         best_idx = int(np.argmax(probabilities))
         disease_name = self._name_of(best_idx)
         confidence = float(probabilities[best_idx])
+        top3 = [{'hastalik': name, 'confidence': conf} for name, conf in self._top_k(probabilities)]
+
+        if confidence < self.MIN_CONFIDENCE:
+            return {
+                'durum': 'belirsiz',
+                'hastalik': None,
+                'saglikli': None,
+                'confidence': confidence,
+                'dusuk_confidence': True,
+                'mesaj': "Hastalık teşhisi kesin değil. Yaprağı daha yakından, iyi ışıkta ve net "
+                         "çekip tekrar deneyin.",
+                'top3': top3,
+            }
 
         return {
             'durum': 'tespit_edildi',
@@ -220,7 +240,7 @@ class DiseaseClassifier(KerasClassifier):
             'confidence': confidence,
             'sinif_index': best_idx,
             'dusuk_confidence': confidence < self.LOW_CONFIDENCE_THRESHOLD,
-            'top3': [{'hastalik': name, 'confidence': conf} for name, conf in self._top_k(probabilities)],
+            'top3': top3,
             'tum_sonuclar': {self._name_of(i): float(p) for i, p in enumerate(probabilities)},
         }
 

@@ -40,15 +40,21 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
 - [x] **9. Güvenlik header'ları yok** — `backend/src/index.js`
   - ✅ Çözüldü: `helmet` (CSP, HSTS, nosniff, X-Frame-Options, `X-Powered-By` gizli). CORS yalnızca `CORS_ORIGINS` listesine (tanımlı değilse localhost'a) açık; mobil uygulama Origin göndermediği için etkilenmez. JSON gövde limiti 15 MB'tan 100 KB'a indirildi (aşılırsa 413).
 - [x] **10. Hata mesajları sızıyor** — ✅ Çözüldü: `AppError` hiyerarşisi + `middlewares/errorHandler.js`. Beklenen hatalar kendi mesajıyla, beklenmeyenler genel "Beklenmeyen bir sunucu hatası oluştu." mesajıyla döner; `detay` alanı kaldırıldı.
-- [ ] **11. HTTP kullanılıyor** — Şifreler ağda şifrelenmeden gidiyor; canlıya çıkmadan HTTPS şart.
+- [x] **11. HTTP kullanılıyor** — `backend/src/middlewares/requireHttps.js`, `mobile_app/src/config.js`
+  - ✅ Çözüldü: Canlıda (`NODE_ENV=production`) şifrelenmemiş istekler 403 ile reddedilir (`/api/health` hariç); ters proxy arkasında `X-Forwarded-Proto` tanınır (`TRUST_PROXY`). `TLS_CERT_PATH`/`TLS_KEY_PATH` verilirse sunucu doğrudan HTTPS çalışır. HSTS açık. Mobilin canlı sürümü `https://` olmayan API adresiyle açılmayı reddeder. Proxy ve doğrudan TLS senaryoları test edildi.
+  - Kalan: Canlıya çıkarken alan adı + sertifika (önerilen: Caddy ile otomatik Let's Encrypt — rehberde örnek var).
 - [x] **12. DB bağlantı bayrağı takılı kalıyor** — `backend/src/config/db.js`
   - Bağlantı bir kez koparsa endpoint'ler başka bir sorgu başarılı olana kadar `offline` kalıyordu.
   - ✅ Çözüldü: `Database.ensureConnected()` bağlantı kopuksa önce yeniden bağlanmayı dener. DB durdurulup açılarak test edildi; sunucu yeniden başlatılmadan toparlanıyor.
-- [ ] **13. Riskli migration** — `backend/src/config/DatabaseInitializer.js`
-  - `users` tablosu yoksa diğer tablolar `DROP` ediliyor. Gerçek bir migration aracına geçilmeli (`node-pg-migrate` vb.).
-- [ ] **14. Seed verisi güncellenmiyor** — Seed yalnızca tablo boşken çalışıyor; yeni hastalık/tedavi metinleri mevcut veritabanlarına ulaşmıyor. `INSERT ... ON CONFLICT DO UPDATE` ile idempotent hale getirilmeli.
-- [ ] **15. Hastalık katmanında güven eşiği yok** — `backend/src/services/predict_pipeline.py`
-  - Bitki türünde %50 eşiği var; hastalık modeli düşük güvenle bile kesin teşhis döndürüyor → yanlış ilaç önerisi riski. Eşik altı sonuçlar "Emin değiliz, daha net bir fotoğraf çekin" olarak dönmeli.
+- [x] **13. Riskli migration** — `backend/src/database/Migrator.js`
+  - `users` tablosu yoksa diğer tablolar `DROP` ediliyordu.
+  - ✅ Çözüldü: Numaralı SQL migration dosyaları (`src/database/migrations/`), uygulananlar `schema_migrations` tablosunda (checksum ile), her migration kendi transaction'ında, eşzamanlı çalıştırmaya karşı advisory lock. Otomatik `DROP` tamamen kaldırıldı. `npm run migrate` / `npm run migrate:status`. Mevcut veritabanında şema farkı olmadan uygulandığı ve sıfırdan kurulumda çalıştığı doğrulandı. Veritabanı yoksa oluşturma yalnızca "veritabanı yok" hatasında deneniyor (yönetilen PostgreSQL uyumlu).
+- [x] **14. Seed verisi güncellenmiyor** — `backend/src/database/CatalogSeeder.js`
+  - ✅ Çözüldü: Katalog her açılışta tek transaction içinde `INSERT ... ON CONFLICT DO UPDATE` ile senkronize ediliyor; yalnızca değişen kayıtlar güncellenir. Katalogdan çıkarılan kayıtlar teşhislere bağlı olduğu için silinmez.
+- [x] **15. Hastalık katmanında güven eşiği yok** — `backend/src/services/predict_pipeline.py`
+  - ✅ Çözüldü: Hastalık güveni %60'ın altındaysa sonuç `belirsiz` döner — kesin teşhis ve ilaç önerisi verilmez, kullanıcı daha net fotoğraf çekmeye ve gerekirse ziraat mühendisine yönlendirilir; olası sonuçlar "kesin değil" notuyla listelenir. %60–70 arası teşhis edilir ama "düşük güven" uyarısı gösterilir.
+  - Düzeltilen hata: Geçmiş ekranları kesin teşhisi olmayan kayıtları (belirsiz / model yok / hata) "Hastalık Tespit Edildi" olarak gösteriyordu; API de bu durumlarda `diseaseDisplayName: "Sağlıklı"` döndürüyordu.
+  - Not: %60 eşiği gerçek fotoğraflarla ayarlanmalı (bitki türüne göre farklı eşik gerekebilir) — `DiseaseClassifier.MIN_CONFIDENCE`.
 
 ## 🟡 Orta — Kod Kalitesi ve Bakım
 
@@ -66,7 +72,7 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
 - [x] **19. Backend adresi koda gömülü** — `mobile_app/src/config.js`
   - IP her değiştiğinde dosya düzenlenip commit'leniyor; ekipte herkes birbirinin IP'sini eziyor.
   - ✅ Çözüldü: Adres artık otomatik — önce `EXPO_PUBLIC_API_URL`, yoksa Metro'nun çalıştığı bilgisayarın IP'si (`Constants.expoConfig.hostUri`), o da yoksa emülatör varsayılanı.
-- [ ] **20. Test kapsamı düşük** *(kısmen)* — ✅ 47 birim testi var (`DiagnosisService`, `AuthService`, `TokenService`, `authenticate`, `CredentialPolicy`, `errorHandler`). Kalan: repository'ler için entegrasyon testi (gerçek PostgreSQL), `AiDaemonClient` ve Python pipeline (`pytest`) testleri, mobil testler.
+- [ ] **20. Test kapsamı düşük** *(kısmen)* — ✅ 48 birim testi var (`DiagnosisService`, `AuthService`, `TokenService`, `authenticate`, `CredentialPolicy`, `errorHandler`). Kalan: repository'ler için entegrasyon testi (gerçek PostgreSQL), `AiDaemonClient` ve Python pipeline (`pytest`) testleri, mobil testler.
 - [ ] **21. Lint hataları** *(kısmen)* — ✅ 24 → 12 sorun. Kalanlar (hepsi refactor öncesinden):
   - `useSwipeModal.js`: render sırasında ref okuma (8 hata) — `Animated` değerlerinin state'e/`useMemo`'ya taşınması gerekiyor
   - `ThemeContext.js`, `LoginScreen.js`, `DiagnosisDetailModal.js`: effect içinde senkron `setState`

@@ -36,9 +36,10 @@ function toDiagnosisResponse(result, dbId, filename, tedaviOnerisi) {
         },
         healthStatus: {
             status: k3.durum || 'unknown',
-            isHealthy: k3.saglikli ?? true,
+            // Kesin teşhis yoksa (belirsiz, model yok, hata) "sağlıklı" varsayılmaz
+            isHealthy: k3.saglikli ?? null,
             diseaseName: k3.hastalik || null,
-            diseaseDisplayName: k3.hastalik_tr || 'Sağlıklı',
+            diseaseDisplayName: k3.hastalik_tr || null,
             confidence: k3.confidence || 0,
             lowConfidence: k3.dusuk_confidence || false,
             message: k3.mesaj || null,

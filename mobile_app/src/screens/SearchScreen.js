@@ -17,6 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 
 import { api } from '../services/ApiClient';
+import { describeDiagnosis } from '../utils/diagnosisStatus';
 import DiagnosisDetailModal from '../components/myplants/DiagnosisDetailModal';
 import CustomAlert from '../components/CustomAlert';
 import { useCustomAlert } from '../hooks/useCustomAlert';
@@ -153,10 +154,7 @@ export default function SearchScreen() {
 
     // Her bir geçmiş kartı render fonksiyonu
     const renderHistoryItem = ({ item }) => {
-        const isHealthy = item.hastalik_durum === 'saglikli' || (item.hastalik_durum === 'tespit_edildi' && item.hastalik_adi === 'Healthy');
-        const statusColor = isHealthy ? '#34C759' : '#FF3B30';
-        const statusBg = isHealthy ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 59, 48, 0.1)';
-        const statusText = isHealthy ? 'Sağlıklı' : (item.hastalik_adi_tr || 'Hastalık Teşhisi');
+        const { color: statusColor, bg: statusBg, label: statusText } = describeDiagnosis(item);
 
         const imageSource = api.imageSource(item.resim_yolu);
 

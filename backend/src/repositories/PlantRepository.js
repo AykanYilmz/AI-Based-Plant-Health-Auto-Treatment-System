@@ -21,25 +21,42 @@ class PlantRepository {
         return res.rows[0] || null;
     }
 
-    async countPlants() {
-        const res = await this.#db.query('SELECT COUNT(*) FROM plants');
-        return parseInt(res.rows[0].count, 10);
-    }
-
-    async insertPlant({ key, tr, en }) {
+    /**
+     * Bitkiyi ekler; varsa isimlerini günceller.
+     * @returns {Promise<{ id: number, changed: boolean }>} changed: kayıt eklendi veya bir alanı değişti
+     */
+    async upsertPlant({ key, tr, en }) {
         const res = await this.#db.query(
-            'INSERT INTO plants (key, name_tr, name_en) VALUES ($1, $2, $3) RETURNING id',
+            `INSERT INTO plants (key, name_tr, name_en) VALUES ($1, $2, $3)
+             ON CONFLICT (key) DO UPDATE SET name_tr = EXCLUDED.name_tr, name_en = EXCLUDED.name_en
+                 WHERE (plants.name_tr, plants.name_en) IS DISTINCT FROM (EXCLUDED.name_tr, EXCLUDED.name_en)
+             RETURNING id`,
             [key, tr, en]
         );
-        return res.rows[0].id;
+        if (res.rowCount > 0) return { id: res.rows[0].id, changed: true };
+
+        // Değişiklik yoksa UPDATE atlanır ve RETURNING boş döner
+        const existing = await this.findPlantByKey(key);
+        return { id: existing.id, changed: false };
     }
 
-    async insertDisease({ plantId, key, nameTr, nameEn, treatment }) {
-        await this.#db.query(
+    /**
+     * Hastalığı ekler; varsa isimlerini ve tedavi önerisini günceller.
+     * @returns {Promise<boolean>} Kayıt eklendi veya bir alanı değişti
+     */
+    async upsertDisease({ plantId, key, nameTr, nameEn, treatment }) {
+        const res = await this.#db.query(
             `INSERT INTO diseases (plant_id, key, name_tr, name_en, treatment_recommendation)
-             VALUES ($1, $2, $3, $4, $5)`,
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (plant_id, key) DO UPDATE SET
+                 name_tr = EXCLUDED.name_tr,
+                 name_en = EXCLUDED.name_en,
+                 treatment_recommendation = EXCLUDED.treatment_recommendation
+                 WHERE (diseases.name_tr, diseases.name_en, diseases.treatment_recommendation)
+                     IS DISTINCT FROM (EXCLUDED.name_tr, EXCLUDED.name_en, EXCLUDED.treatment_recommendation)`,
             [plantId, key, nameTr, nameEn, treatment]
         );
+        return res.rowCount > 0;
     }
 }
 
