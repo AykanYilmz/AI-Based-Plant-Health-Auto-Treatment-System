@@ -60,7 +60,15 @@ DB_PASSWORD=postgres
 DB_HOST=localhost
 DB_PORT=5432
 DB_DATABASE=plant_health_db
+
+# Oturum token'larını imzalama anahtarı (herkes kendi rastgele değerini üretmeli, git'e eklenmez)
+# Üretmek için: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+JWT_SECRET=buraya-uzun-rastgele-bir-deger
 ```
+> `JWT_SECRET` tanımlı değilse sunucu geliştirme ortamında geçici bir anahtar üretir; bu durumda sunucu her yeniden başladığında tüm oturumlar düşer. Canlı ortamda (`NODE_ENV=production`) tanımlı değilse sunucu başlamaz.
+
+### 🔐 Oturum (JWT) Sistemi
+Giriş, kayıt ve misafir girişi `accessToken` (1 saat) ve `refreshToken` (30 gün) döndürür. Teşhis, geçmiş ve görsel uç noktaları `Authorization: Bearer <accessToken>` header'ı ister; kullanıcı kimliği artık `?uuid=` veya `X-User-UUID` ile **gönderilmez**, token'dan alınır. Teşhis görselleri herkese açık `/uploads` klasöründen değil, yalnızca sahibine açık `GET /api/images/:dosya` uç noktasından servis edilir. Mobil uygulama bunları `src/services/ApiClient.js` üzerinden otomatik yönetir (süresi dolan token'ı kendisi yeniler).
 
 ---
 

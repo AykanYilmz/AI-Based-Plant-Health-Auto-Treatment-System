@@ -54,7 +54,7 @@ export default function MyPlantsScreen({ navigation }) {
             const fetchHistory = async () => {
                 if (!userUuid) return;
                 try {
-                    const data = await api.getHistory(userUuid);
+                    const data = await api.getHistory();
                     if (data.basarili && isActive) {
                         setHistory(data.gecmis || []);
                     }
@@ -77,7 +77,7 @@ export default function MyPlantsScreen({ navigation }) {
             async () => {
                 hideCustomAlert();
                 try {
-                    const data = await api.deleteDiagnosis(id, userUuid);
+                    const data = await api.deleteDiagnosis(id);
                     if (data.basarili) {
                         setModalVisible(false);
                         setSelectedItem(null);
@@ -278,7 +278,7 @@ export default function MyPlantsScreen({ navigation }) {
                                         key={item.id}
                                         name={item.bitki_adi_tr || item.bitki_adi}
                                         status={isHealthy ? 'Sağlıklı (Bakım gerekmiyor)' : (item.hastalik_adi_tr || 'Teşhis Edildi')}
-                                        imageUrl={api.imageUrl(item.resim_yolu)}
+                                        imageSource={api.imageSource(item.resim_yolu)}
                                         needs={isHealthy ? [] : ['fertilizer']}
                                         styles={styles}
                                         colors={colors}

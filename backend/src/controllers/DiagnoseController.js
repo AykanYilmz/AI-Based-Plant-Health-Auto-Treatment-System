@@ -1,11 +1,10 @@
 const logger = require('../utils/logger');
 const { ValidationError } = require('../errors/AppError');
 
-const DEFAULT_GUEST_UUID = 'default_guest_uuid';
-
 /**
- * Teşhis ve teşhis geçmişi HTTP uç noktaları. İş mantığı DiagnosisService'tedir;
+ * Teşhis, teşhis geçmişi ve teşhis görselleri HTTP uç noktaları. İş mantığı DiagnosisService'tedir;
  * hatalar Express 5 tarafından global hata yakalayıcıya iletilir.
+ * Kullanıcı kimliği her zaman doğrulanmış access token'dan (`req.user`) alınır.
  * Metotlar route'lara doğrudan verilebilmesi için arrow function olarak tanımlıdır.
  */
 class DiagnoseController {
@@ -21,22 +20,20 @@ class DiagnoseController {
             throw new ValidationError('Lütfen bir fotoğraf yükleyin. Form alanı: "image"');
         }
 
-        const userUuid = DiagnoseController.#userUuid(req) || DEFAULT_GUEST_UUID;
-        logger.info(`📸 Fotoğraf alındı: ${req.file.originalname} (${(req.file.size / 1024).toFixed(1)} KB) | Kullanıcı UUID: ${userUuid}`);
-
-        res.json(await this.#service.diagnose(req.file.buffer, userUuid));
+        logger.info(`📸 Fotoğraf alındı: ${req.file.originalname} (${(req.file.size / 1024).toFixed(1)} KB) | Kullanıcı UUID: ${req.user.uuid}`);
+        res.json(await this.#service.diagnose(req.file.buffer, req.user.uuid));
     };
 
-    /** GET /api/history?uuid= */
+    /** GET /api/history */
     getHistory = async (req, res) => {
-        const history = await this.#service.getHistory(req.query.uuid);
+        const history = await this.#service.getHistory(req.user.uuid);
         res.json({ basarili: true, toplam: history.length, gecmis: history });
     };
 
-    /** DELETE /api/history/:id (X-User-UUID header'ı zorunlu) */
+    /** DELETE /api/history/:id */
     deleteHistory = async (req, res) => {
         const { id } = req.params;
-        await this.#service.deleteOne(id, DiagnoseController.#userUuid(req));
+        await this.#service.deleteOne(id, req.user.uuid);
         res.json({
             basarili: true,
             mesaj: 'Teşhis kaydı ve ilişkili görsel başarıyla silindi.',
@@ -44,10 +41,17 @@ class DiagnoseController {
         });
     };
 
-    /** DELETE /api/history?uuid= */
+    /** DELETE /api/history */
     deleteAllHistory = async (req, res) => {
-        await this.#service.deleteAll(req.query.uuid);
+        await this.#service.deleteAll(req.user.uuid);
         res.json({ basarili: true, mesaj: 'Tüm teşhis kayıtları ve ilişkili görseller başarıyla temizlendi.' });
+    };
+
+    /** GET /api/images/:filename — yalnızca görselin sahibi erişebilir */
+    getImage = async (req, res) => {
+        const filePath = await this.#service.getImagePath(req.params.filename, req.user.uuid);
+        res.set('Cache-Control', 'private, max-age=86400');
+        res.sendFile(filePath);
     };
 
     /** GET /api/labels */
@@ -60,10 +64,6 @@ class DiagnoseController {
             not: 'Hastalık tespiti aktif: apple, bell pepper, cherry, corn, grape, peach, potato, strawberry, tomato',
         });
     };
-
-    static #userUuid(req) {
-        return req.get('x-user-uuid') || req.query.uuid || null;
-    }
 }
 
 module.exports = DiagnoseController;

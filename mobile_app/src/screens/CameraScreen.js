@@ -7,7 +7,6 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { api } from '../services/ApiClient';
-import { useAuth } from '../context/AuthContext';
 import CustomAlert from '../components/CustomAlert';
 import { useCustomAlert } from '../hooks/useCustomAlert';
 
@@ -16,7 +15,6 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export default function CameraScreen({ navigation }) {
     const { isDark, colors } = useTheme();
-    const { user } = useAuth();
 
     const styles = useMemo(() => getDynamicStyles(colors), [colors]);
 
@@ -158,7 +156,7 @@ export default function CameraScreen({ navigation }) {
                 });
             }
 
-            const result = await api.diagnose(formData, user?.uuid, signal);
+            const result = await api.diagnose(formData, signal);
 
             if (isMountedRef.current) {
                 if (result.basarili) {
@@ -189,7 +187,7 @@ export default function CameraScreen({ navigation }) {
                 setAnalyzeStep('');
             }
         }
-    }, [navigation, user, showInfoAlert]);
+    }, [navigation, showInfoAlert]);
 
     // Galeriden fotoğraf seçimi
     const pickImage = useCallback(async () => {

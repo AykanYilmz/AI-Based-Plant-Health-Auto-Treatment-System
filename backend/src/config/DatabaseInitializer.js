@@ -85,7 +85,7 @@ class DatabaseInitializer {
         if (res.rows[0].exists) return;
 
         logger.warn('🔄 Eski veri tabanı şeması tespit edildi. İlişkisel tablo yapısına geçiş yapılıyor (Migration)...');
-        for (const table of ['diagnoses', 'diseases', 'plants', 'users']) {
+        for (const table of ['refresh_tokens', 'diagnoses', 'diseases', 'plants', 'users']) {
             await this.#db.query(`DROP TABLE IF EXISTS ${table} CASCADE;`);
         }
     }
@@ -146,6 +146,19 @@ class DatabaseInitializer {
 
         // Migration: Eğer tablo önceden oluşturulduysa ve 'tedavi_onerisi' kolonu yoksa otomatik ekle
         await this.#db.query(`ALTER TABLE diagnoses ADD COLUMN IF NOT EXISTS tedavi_onerisi TEXT;`);
+
+        // 5. Oturum Yenileme (Refresh) Token'ları — token'ın kendisi değil SHA-256 hash'i saklanır
+        await this.#db.query(`
+            CREATE TABLE IF NOT EXISTS refresh_tokens (
+                id SERIAL PRIMARY KEY,
+                user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                token_hash CHAR(64) UNIQUE NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                revoked_at TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await this.#db.query('CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);');
     }
 
     /** Plants ve Diseases tablolarını PlantCatalog verileriyle doldurur. */

@@ -12,23 +12,22 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
   - `POST /api/auth/guest` gelen UUID'nin misafire ait olup olmadığını kontrol etmiyordu; kayıtlı bir kullanıcının UUID'si gönderilirse o kullanıcı olarak **şifresiz giriş** yapılıyordu.
   - `POST /api/auth/upgrade` aynı şekilde kayıtlı kullanıcıları da "yükseltiyordu"; UUID ile yeni e-posta/şifre gönderilerek **hesap çalınabiliyordu**.
   - ✅ Çözüldü: Kayıtlı UUID ile misafir girişi 403, yükseltme 404 döner (birim testi + canlı test ile doğrulandı). Mobil uygulama yükseltmeden sonra misafir cihaz kimliğini sıfırlıyor.
-- [ ] **2. Gerçek oturum (authentication) sistemi yok**
-  - Kullanıcı sadece `x-user-uuid` header'ı / `?uuid=` parametresiyle tanınıyor; UUID URL'de gidip loglara düşüyor.
-  - `GET /api/history?uuid=...` ile UUID'yi bilen herkes başkasının teşhis geçmişini okuyabiliyor.
-  - Çözüm: Giriş sonrası JWT (access + refresh token) üretilmeli, tüm korumalı endpoint'ler middleware ile doğrulanmalı.
+- [x] **2. Gerçek oturum (authentication) sistemi yok**
+  - Kullanıcı sadece `x-user-uuid` header'ı / `?uuid=` parametresiyle tanınıyordu; UUID'yi bilen herkes başkasının geçmişini okuyabiliyordu.
+  - ✅ Çözüldü: JWT access token (1 saat) + opak refresh token (30 gün, DB'de SHA-256 hash'i, her kullanımda yenisiyle değiştirilir). Kullanılmış bir refresh token tekrar gelirse çalıntı kabul edilip kullanıcının tüm oturumları kapatılır. Korumalı uç noktalar `middlewares/authenticate.js` ile doğrulanır; kimlik yalnızca token'dan alınır. Çıkış yapınca refresh token sunucuda iptal edilir. Mobil `ApiClient` süresi dolan token'ı otomatik yeniler (eşzamanlı isteklerde tek yenileme). Misafir cihaz kimliği artık `expo-crypto` ile kriptografik rastgele üretiliyor.
 - [x] **3. Herkes her teşhis kaydını silebiliyor** — `DELETE /api/history/:id`
   - Sahiplik kontrolü yoktu; ID'ler sıralı (SERIAL) olduğu için döngüyle tüm kayıtlar silinebiliyordu.
-  - ✅ Çözüldü: Silme artık `X-User-UUID` header'ı zorunlu ve yalnızca o kullanıcının kaydını siler (`DiagnosisRepository.deleteForUser`). ⚠️ UUID gizli bir bilgi olmadığı için tam koruma 2. madde (JWT) ile sağlanacak.
-- [ ] **4. Yüklenen fotoğraflar herkese açık** *(kısmen)*
-  - `/uploads` kimlik doğrulamasız statik olarak servis ediliyor.
-  - ✅ Dosya adları artık rastgele (`img_<zaman>_<12 hex>_<bitki>.jpg`), tahmin edilemez; path traversal engellendi.
-  - Kalan: Oturum kontrolü olan bir görsel endpoint'i (2. maddeye bağlı).
+  - ✅ Çözüldü: Silme yalnızca token sahibinin kaydını siler (`DiagnosisRepository.deleteForUser`); başka kullanıcının kaydı için 404 döner.
+- [x] **4. Yüklenen fotoğraflar herkese açık**
+  - `/uploads` kimlik doğrulamasız statik olarak servis ediliyordu; dosya adları tahmin edilebilirdi.
+  - ✅ Çözüldü: Statik `/uploads` kaldırıldı. Görseller `GET /api/images/:dosya` ile yalnızca sahibine servis edilir (başkasına 404, tokensız 401). Dosya adları rastgele; path traversal engellendi.
 - [x] **5. DEBUG kodu açık kalmış**
   - Her teşhis isteğinde ham fotoğraf `debug_*.jpg` olarak `uploads/` klasörüne yazılıyordu.
   - ✅ Kod kaldırıldı. Not: Daha önce oluşmuş `backend/uploads/debug_*.jpg`, `backend/debug_crop.jpg` ve `backend/debug_model_input.jpg` dosyaları yerelde duruyor (git'te değiller), elle silinebilir.
-- [ ] **6. Şifre telefonda düz metin saklanıyor** — `mobile_app/src/context/AuthContext.js`
-  - "Beni hatırla" seçildiğinde şifre AsyncStorage'a açık olarak (`savedPassword`) yazılıyor.
-  - Çözüm: Şifre değil token saklanmalı; gerekiyorsa `expo-secure-store` kullanılmalı.
+- [x] **6. Şifre telefonda düz metin saklanıyor** — `mobile_app/src/services/SessionStore.js`
+  - "Beni hatırla" seçildiğinde şifre AsyncStorage'a açık olarak (`savedPassword`) yazılıyordu.
+  - ✅ Çözüldü: Şifre artık hiç saklanmıyor. "Beni hatırla" açıksa sunucuda iptal edilebilen refresh token `expo-secure-store` ile şifreli depoda (Android Keystore / iOS Keychain) tutulur ve uygulama açılışında oturum otomatik geri yüklenir; giriş formu için yalnızca e-posta hatırlanır. Eski sürümlerin bıraktığı `savedPassword` ilk açılışta cihazdan silinir.
+  - Kalan küçük iyileştirme: Misafir cihaz kimliği (`guestDeviceUuid`) hâlâ AsyncStorage'da; misafir oturumu açabildiği için `SecureStore`'a taşınabilir.
 
 ## 🟠 Yüksek — Sağlamlık ve Güvenlik Eksikleri
 
@@ -64,7 +63,7 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
 - [x] **19. Backend adresi koda gömülü** — `mobile_app/src/config.js`
   - IP her değiştiğinde dosya düzenlenip commit'leniyor; ekipte herkes birbirinin IP'sini eziyor.
   - ✅ Çözüldü: Adres artık otomatik — önce `EXPO_PUBLIC_API_URL`, yoksa Metro'nun çalıştığı bilgisayarın IP'si (`Constants.expoConfig.hostUri`), o da yoksa emülatör varsayılanı.
-- [ ] **20. Test kapsamı düşük** *(kısmen)* — ✅ 17 birim testi var (`DiagnosisService`, `AuthService`, `errorHandler`). Kalan: repository'ler için entegrasyon testi (gerçek PostgreSQL), `AiDaemonClient` ve Python pipeline (`pytest`) testleri, mobil testler.
+- [ ] **20. Test kapsamı düşük** *(kısmen)* — ✅ 28 birim testi var (`DiagnosisService`, `AuthService`, `TokenService`, `authenticate`, `errorHandler`). Kalan: repository'ler için entegrasyon testi (gerçek PostgreSQL), `AiDaemonClient` ve Python pipeline (`pytest`) testleri, mobil testler.
 - [ ] **21. Lint hataları** *(kısmen)* — ✅ 24 → 12 sorun. Kalanlar (hepsi refactor öncesinden):
   - `useSwipeModal.js`: render sırasında ref okuma (8 hata) — `Animated` değerlerinin state'e/`useMemo`'ya taşınması gerekiyor
   - `ThemeContext.js`, `LoginScreen.js`, `DiagnosisDetailModal.js`: effect içinde senkron `setState`

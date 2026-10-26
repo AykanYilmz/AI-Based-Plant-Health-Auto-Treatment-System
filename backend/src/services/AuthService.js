@@ -12,15 +12,18 @@ const {
 const BCRYPT_ROUNDS = 10;
 
 /**
- * Kayıt, giriş, misafir oturumu ve misafir hesabın yükseltilmesi iş kurallarını yönetir.
+ * Kayıt, giriş, misafir oturumu, hesap yükseltme ve oturum (token) yenileme iş kurallarını yönetir.
+ * Başarılı her giriş `{ user, tokens }` döndürür.
  */
 class AuthService {
     #db;
     #users;
+    #tokens;
 
-    constructor({ db, userRepository }) {
+    constructor({ db, userRepository, tokenService }) {
         this.#db = db;
         this.#users = userRepository;
+        this.#tokens = tokenService;
     }
 
     async register({ name, email, password }) {
@@ -40,7 +43,7 @@ class AuthService {
             passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS),
         });
         logger.success(`👤 Yeni kullanıcı kaydedildi: ${email}`);
-        return user;
+        return this.#startSession(user);
     }
 
     async login({ email, password }) {
@@ -57,13 +60,13 @@ class AuthService {
 
         logger.success(`👤 Kullanıcı giriş yaptı: ${email}`);
         const { password_hash: _omit, ...user } = record;
-        return user;
+        return this.#startSession(user);
     }
 
     /**
      * Cihaz UUID'si ile misafir oturumu açar; misafir yoksa oluşturur.
      * Kayıtlı bir hesaba ait UUID ile şifresiz giriş yapılmasına izin verilmez.
-     * @returns {Promise<{user: Object, created: boolean}>}
+     * @returns {Promise<{user: Object, tokens: Object, created: boolean}>}
      */
     async guestLogin(deviceUuid) {
         if (!deviceUuid) {
@@ -71,36 +74,40 @@ class AuthService {
         }
         await this.#requireDatabase();
 
-        const existing = await this.#users.findByUuid(deviceUuid);
-        if (existing) {
-            if (existing.user_type !== 'guest') {
-                throw new ForbiddenError('Bu cihaz kimliği kayıtlı bir hesaba ait. Lütfen e-posta ve şifrenizle giriş yapın.');
-            }
-            logger.info(`👤 Mevcut misafir girişi: ${deviceUuid}`);
-            return { user: existing, created: false };
+        let user = await this.#users.findByUuid(deviceUuid);
+        const created = !user;
+        if (user && user.user_type !== 'guest') {
+            throw new ForbiddenError('Bu cihaz kimliği kayıtlı bir hesaba ait. Lütfen e-posta ve şifrenizle giriş yapın.');
         }
 
-        const user = await this.#users.createGuest(deviceUuid);
-        logger.success(`👤 Yeni misafir kaydedildi: ${deviceUuid}`);
-        return { user, created: true };
+        if (created) {
+            user = await this.#users.createGuest(deviceUuid);
+            logger.success(`👤 Yeni misafir kaydedildi: ${deviceUuid}`);
+        } else {
+            logger.info(`👤 Mevcut misafir girişi: ${deviceUuid}`);
+        }
+        return { ...(await this.#startSession(user)), created };
     }
 
-    /** Misafir hesabı kayıtlı üyeliğe yükseltir. Kayıtlı hesaplar yükseltilemez. */
-    async upgrade({ deviceUuid, name, email, password }) {
-        if (!deviceUuid || !name || !email || !password) {
+    /**
+     * Oturumdaki misafir hesabı kayıtlı üyeliğe yükseltir. Kayıtlı hesaplar yükseltilemez.
+     * @param {string} userUuid - Doğrulanmış access token'dan gelen kullanıcı kimliği
+     */
+    async upgrade(userUuid, { name, email, password }) {
+        if (!name || !email || !password) {
             throw new ValidationError('Eksik parametreler.');
         }
         await this.#requireDatabase();
 
-        const existing = await this.#users.findByUuid(deviceUuid);
+        const existing = await this.#users.findByUuid(userUuid);
         if (!existing || existing.user_type !== 'guest') {
             throw new NotFoundError('Yükseltilecek misafir oturumu bulunamadı.');
         }
-        if (await this.#users.emailExists(email, deviceUuid)) {
+        if (await this.#users.emailExists(email, userUuid)) {
             throw new ValidationError('Bu e-posta adresi başka bir kayıtlı kullanıcıya ait.');
         }
 
-        const user = await this.#users.upgradeGuest(deviceUuid, {
+        const user = await this.#users.upgradeGuest(userUuid, {
             name,
             email,
             passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS),
@@ -110,6 +117,27 @@ class AuthService {
         }
         logger.success(`👤 Hesap yükseltildi (Misafir -> Kayıtlı): ${email}`);
         return user;
+    }
+
+    /** Refresh token ile yeni bir token çifti üretir (eski refresh token geçersiz olur). */
+    async refresh(refreshToken) {
+        await this.#requireDatabase();
+        const { userUuid } = await this.#tokens.consumeRefreshToken(refreshToken);
+
+        const user = await this.#users.findByUuid(userUuid);
+        if (!user) {
+            throw new UnauthorizedError('Oturum bulunamadı. Lütfen tekrar giriş yapın.', { kod: 'REFRESH_INVALID' });
+        }
+        return this.#startSession(user);
+    }
+
+    async logout(refreshToken) {
+        await this.#requireDatabase();
+        await this.#tokens.revokeRefreshToken(refreshToken);
+    }
+
+    async #startSession(user) {
+        return { user, tokens: await this.#tokens.issueTokens(user) };
     }
 
     async #requireDatabase() {

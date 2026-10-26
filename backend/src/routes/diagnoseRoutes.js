@@ -4,24 +4,29 @@ const upload = require('../middlewares/uploadMiddleware');
 /**
  * Teşhis route'larını verilen controller örneğine bağlar.
  * @param {import('../controllers/DiagnoseController')} controller
+ * @param {import('express').RequestHandler} authenticate - Access token doğrulama middleware'i
  */
-function createDiagnoseRoutes(controller) {
+function createDiagnoseRoutes(controller, authenticate) {
     const router = express.Router();
 
-    // POST /api/diagnose - Fotoğraf yükle ve AI tahmin al
-    router.post('/diagnose', upload.single('image'), controller.diagnose);
-
-    // GET /api/labels - Desteklenen etiket listesi
+    // GET /api/labels - Desteklenen etiket listesi (herkese açık)
     router.get('/labels', controller.getLabels);
 
-    // GET /api/history - Teşhis geçmişini listele
-    router.get('/history', controller.getHistory);
+    // POST /api/diagnose - Fotoğraf yükle ve AI tahmin al
+    // (Kimlik doğrulama, büyük dosya belleğe alınmadan önce yapılır)
+    router.post('/diagnose', authenticate, upload.single('image'), controller.diagnose);
 
-    // DELETE /api/history/:id - Teşhis kaydını sil
-    router.delete('/history/:id', controller.deleteHistory);
+    // GET /api/history - Kullanıcının teşhis geçmişini listele
+    router.get('/history', authenticate, controller.getHistory);
 
-    // DELETE /api/history - Tüm teşhis geçmişini sil
-    router.delete('/history', controller.deleteAllHistory);
+    // DELETE /api/history/:id - Kullanıcının teşhis kaydını sil
+    router.delete('/history/:id', authenticate, controller.deleteHistory);
+
+    // DELETE /api/history - Kullanıcının tüm teşhis geçmişini sil
+    router.delete('/history', authenticate, controller.deleteAllHistory);
+
+    // GET /api/images/:filename - Kullanıcının kendi teşhis görseli
+    router.get('/images/:filename', authenticate, controller.getImage);
 
     return router;
 }

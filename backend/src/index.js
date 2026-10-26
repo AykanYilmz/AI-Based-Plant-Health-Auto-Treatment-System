@@ -8,8 +8,9 @@ const errorHandler = require('./middlewares/errorHandler');
 const {
     db,
     aiClient,
-    imageStorage,
+    refreshTokenRepository,
     databaseInitializer,
+    authenticate,
     authController,
     diagnoseController,
 } = require('./container');
@@ -26,12 +27,11 @@ function createApp() {
     app.use(cors());                         // Tüm origin'lerden erişime izin ver
     app.use(express.json({ limit: '15mb' })); // JSON body parser (Base64 görseller için yüksek limit)
 
-    // ─── Statik Görsel Klasörü ───────────────────────────────
-    app.use('/uploads', express.static(imageStorage.directory));
-
     // ─── Routes ─────────────────────────────────────────────
-    app.use('/api', createDiagnoseRoutes(diagnoseController));
-    app.use('/api/auth', createAuthRoutes(authController));
+    // Not: Teşhis görselleri herkese açık statik klasörden değil, sahiplik kontrolü yapan
+    // GET /api/images/:filename uç noktasından servis edilir.
+    app.use('/api/auth', createAuthRoutes(authController, authenticate));
+    app.use('/api', createDiagnoseRoutes(diagnoseController, authenticate));
 
     // ─── Sağlık Kontrolü (Fail-Safe Destekli) ────────────────
     app.get('/api/health', (req, res) => {
@@ -54,7 +54,10 @@ async function startServer() {
     logger.info('\n🌱 VerdantAI Backend başlatılıyor...\n');
 
     // 1. Veritabanını kontrol et ve otomatik kur (Fail-safe: hata durumunda sunucuyu çökertmez)
-    await databaseInitializer.initialize();
+    if (await databaseInitializer.initialize()) {
+        const removed = await refreshTokenRepository.deleteExpired();
+        if (removed) logger.info(`🧹 Süresi dolmuş ${removed} oturum kaydı temizlendi.`);
+    }
 
     // 2. AI modellerini önceden belleğe yükle (Python daemon başlatılır)
     if (!(await aiClient.start())) {
@@ -65,11 +68,14 @@ async function startServer() {
     createApp().listen(PORT, '0.0.0.0', () => {
         logger.success(`🚀 Sunucu http://localhost:${PORT} adresinde başarıyla çalışıyor`);
         logger.info(`📡 API Endpoint'leri:`);
-        logger.info(`   POST /api/diagnose  → Fotoğraf yükle ve teşhis al`);
-        logger.info(`   GET  /api/history   → Kullanıcının geçmiş teşhislerini getir`);
-        logger.info(`   DELETE /api/history/:id → Belirli teşhis kaydını sil`);
+        logger.info(`   POST /api/auth/{register,login,guest,refresh,logout,upgrade} → Oturum işlemleri`);
+        logger.info(`   POST /api/diagnose  → Fotoğraf yükle ve teşhis al 🔒`);
+        logger.info(`   GET  /api/history   → Kullanıcının geçmiş teşhislerini getir 🔒`);
+        logger.info(`   DELETE /api/history/:id → Belirli teşhis kaydını sil 🔒`);
+        logger.info(`   GET  /api/images/:filename → Teşhis görseli 🔒`);
         logger.info(`   GET  /api/labels    → Desteklenen bitki/hastalık listesi`);
-        logger.info(`   GET  /api/health    → Sunucu ve servis sağlık durumunu kontrol et\n`);
+        logger.info(`   GET  /api/health    → Sunucu ve servis sağlık durumunu kontrol et`);
+        logger.info(`   🔒 = Authorization: Bearer <accessToken> gerekli\n`);
     });
 }
 

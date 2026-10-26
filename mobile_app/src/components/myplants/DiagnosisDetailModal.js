@@ -105,7 +105,7 @@ export default function DiagnosisDetailModal({ visible, selectedItem, onClose, o
                             onPress={() => setZoomVisible(true)}
                         >
                             <Image
-                                source={{ uri: api.imageUrl(selectedItem.resim_yolu) }}
+                                source={api.imageSource(selectedItem.resim_yolu)}
                                 style={styles.modalImage}
                             />
                             <View style={styles.imageFloatingBadge}>
@@ -197,7 +197,7 @@ export default function DiagnosisDetailModal({ visible, selectedItem, onClose, o
                             <MaterialCommunityIcons name="close" size={28} color="#FFFFFF" />
                         </TouchableOpacity>
                         <Image 
-                            source={{ uri: api.imageUrl(selectedItem.resim_yolu) }} 
+                            source={api.imageSource(selectedItem.resim_yolu)} 
                             style={styles.zoomImage} 
                             resizeMode="contain"
                         />

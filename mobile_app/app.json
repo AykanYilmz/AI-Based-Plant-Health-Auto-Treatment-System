@@ -57,7 +57,8 @@
         {
           "locationWhenInUsePermission": "VerdantAI, bulunduğunuz bölgenin canlı hava durumunu gösterebilmek için yaklaşık konumunuza erişim iznine ihtiyaç duyar."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

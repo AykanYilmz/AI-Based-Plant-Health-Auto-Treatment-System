@@ -12,7 +12,7 @@ import {
     Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { sessionStore } from '../services/SessionStore';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -41,24 +41,20 @@ export default function LoginScreen() {
     // Dinamik stiller
     const styles = useMemo(() => getDynamicStyles(colors, isDark), [colors, isDark]);
 
-    // Beni Hatırla ayarlarını yükle
+    // Beni Hatırla: yalnızca e-posta hatırlanır (şifre cihazda asla saklanmaz)
     useEffect(() => {
-        const loadSavedCredentials = async () => {
+        const loadRememberedLogin = async () => {
             try {
-                const savedEmail = await AsyncStorage.getItem('savedEmail');
-                const savedPassword = await AsyncStorage.getItem('savedPassword');
-                const isRemembered = await AsyncStorage.getItem('rememberMe');
-
-                if (isRemembered === 'true') {
-                    if (savedEmail) setLoginEmail(savedEmail);
-                    if (savedPassword) setLoginPassword(savedPassword);
+                const { email, rememberMe: isRemembered } = await sessionStore.loadRememberedLogin();
+                if (isRemembered) {
+                    if (email) setLoginEmail(email);
                     setRememberMe(true);
                 }
             } catch (err) {
                 console.log('Beni hatırla yüklenemedi:', err);
             }
         };
-        loadSavedCredentials();
+        loadRememberedLogin();
     }, []);
 
     // Hataları temizle

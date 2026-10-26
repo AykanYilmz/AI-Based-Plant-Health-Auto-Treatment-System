@@ -108,6 +108,26 @@ describe('DiagnosisService', () => {
         });
     });
 
+    describe('getImagePath', () => {
+        it('returns the path only for the owner of the image', async () => {
+            const { service, deps } = createService();
+            deps.diagnosisRepository.userOwnsImage = jest.fn().mockResolvedValue(true);
+            deps.imageStorage.pathFor = jest.fn().mockResolvedValue('/uploads/img_test.jpg');
+
+            await expect(service.getImagePath('img_test.jpg', 'user-1')).resolves.toBe('/uploads/img_test.jpg');
+            expect(deps.diagnosisRepository.userOwnsImage).toHaveBeenCalledWith('img_test.jpg', 'user-1');
+        });
+
+        it('hides images that belong to someone else', async () => {
+            const { service, deps } = createService();
+            deps.diagnosisRepository.userOwnsImage = jest.fn().mockResolvedValue(false);
+            deps.imageStorage.pathFor = jest.fn();
+
+            await expect(service.getImagePath('img_test.jpg', 'intruder')).rejects.toBeInstanceOf(NotFoundError);
+            expect(deps.imageStorage.pathFor).not.toHaveBeenCalled();
+        });
+    });
+
     describe('getLabels', () => {
         it('delegates to the AI client', () => {
             const { service, deps } = createService();

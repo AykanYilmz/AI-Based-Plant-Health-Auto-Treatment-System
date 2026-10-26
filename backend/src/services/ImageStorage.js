@@ -47,6 +47,17 @@ class ImageStorage {
         await Promise.all(filenames.map(name => this.remove(name)));
     }
 
+    /** Görselin diskteki tam yolu; dosya yoksa null. */
+    async pathFor(filename) {
+        const filePath = this.#resolve(filename);
+        try {
+            await fs.promises.access(filePath);
+            return filePath;
+        } catch {
+            return null;
+        }
+    }
+
     // Dosya adının klasör dışına çıkmasını (path traversal) engeller
     #resolve(filename) {
         return path.join(this.#directory, path.basename(filename));

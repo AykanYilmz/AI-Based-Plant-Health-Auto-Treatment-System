@@ -43,7 +43,7 @@ export default function SearchScreen() {
         if (!userUuid) return;
         if (showLoadingIndicator) setLoading(true);
         try {
-            const data = await api.getHistory(userUuid);
+            const data = await api.getHistory();
             if (data.basarili) {
                 setHistory(data.gecmis || []);
             } else {
@@ -79,7 +79,7 @@ export default function SearchScreen() {
             async () => {
                 hideCustomAlert();
                 try {
-                    const data = await api.deleteAllHistory(userUuid);
+                    const data = await api.deleteAllHistory();
                     if (data.basarili) {
                         setHistory([]);
                         // Başarılı uyarısı için CustomAlert'i tek butonlu olarak göster
@@ -112,7 +112,7 @@ export default function SearchScreen() {
             async () => {
                 hideCustomAlert();
                 try {
-                    const data = await api.deleteDiagnosis(id, userUuid);
+                    const data = await api.deleteDiagnosis(id);
                     if (data.basarili) {
                         setModalVisible(false);
                         setSelectedItem(null);
@@ -158,7 +158,7 @@ export default function SearchScreen() {
         const statusBg = isHealthy ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 59, 48, 0.1)';
         const statusText = isHealthy ? 'Sağlıklı' : (item.hastalik_adi_tr || 'Hastalık Teşhisi');
 
-        const imageUri = api.imageUrl(item.resim_yolu);
+        const imageSource = api.imageSource(item.resim_yolu);
 
         return (
             <TouchableOpacity 
@@ -170,7 +170,7 @@ export default function SearchScreen() {
                 activeOpacity={0.8}
             >
                 {/* Sol Yaprak Fotoğrafı */}
-                <Image source={{ uri: imageUri }} style={styles.cardImage} />
+                <Image source={imageSource} style={styles.cardImage} />
 
                 {/* Orta Metin Alanı */}
                 <View style={styles.cardInfo}>

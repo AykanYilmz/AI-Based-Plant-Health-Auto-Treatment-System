@@ -6,16 +6,16 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
  * PlantItem — Dashboard bitki geçmişi listesindeki her bir satır kartı.
  * "Stacked Photo" efektiyle bitki fotoğrafı ve ihtiyaç ikonlarını gösterir.
  *
- * @param {{ name: string, status: string, imageUrl: string, needs: string[], styles: object, colors: object, onPress: () => void }} props
+ * @param {{ name: string, status: string, imageSource: { uri: string, headers?: object }, needs: string[], styles: object, colors: object, onPress: () => void }} props
  */
-export default function PlantItem({ name, status, imageUrl, needs, styles, colors, onPress }) {
+export default function PlantItem({ name, status, imageSource, needs, styles, colors, onPress }) {
     return (
         <TouchableOpacity style={styles.plantItemContainer} onPress={onPress}>
             {/* Fotoğraf ve arka plan katman hissi */}
             <View style={styles.plantImageWrapper}>
                 <View style={[styles.plantImageStackBase, styles.stackLayer2]} />
                 <View style={[styles.plantImageStackBase, styles.stackLayer1]} />
-                <Image source={{ uri: imageUrl }} style={styles.plantImageMain} />
+                <Image source={imageSource} style={styles.plantImageMain} />
             </View>
 
             <View style={styles.plantTextContainer}>

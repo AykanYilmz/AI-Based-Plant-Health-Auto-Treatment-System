@@ -50,6 +50,18 @@ class DiagnosisRepository {
         return res.rows;
     }
 
+    /** Görselin bu kullanıcının bir teşhis kaydına ait olup olmadığını kontrol eder. */
+    async userOwnsImage(filename, userUuid) {
+        const res = await this.#db.query(
+            `SELECT 1 FROM diagnoses d
+             JOIN users u ON d.user_id = u.id
+             WHERE d.resim_yolu = $1 AND u.uuid = $2
+             LIMIT 1`,
+            [filename, userUuid]
+        );
+        return res.rowCount > 0;
+    }
+
     /**
      * Kullanıcıya ait tek bir kaydı siler.
      * @returns {Promise<{resim_yolu: string|null}|null>} Silinen kayıt; bulunamazsa null

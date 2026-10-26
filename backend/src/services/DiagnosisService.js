@@ -82,6 +82,21 @@ class DiagnosisService {
         await this.#imageStorage.removeAll(filenames);
     }
 
+    /**
+     * Kullanıcının kendi teşhis görselinin disk yolunu döndürür.
+     * Görsel başka bir kullanıcıya aitse varlığı da gizlenir (404).
+     */
+    async getImagePath(filename, userUuid) {
+        await this.#requireDatabase('Veritabanı şu anda çevrimdışı. Görsel görüntülenemiyor.');
+
+        const owned = await this.#diagnoses.userOwnsImage(filename, userUuid);
+        const filePath = owned ? await this.#imageStorage.pathFor(filename) : null;
+        if (!filePath) {
+            throw new NotFoundError('Görsel bulunamadı.');
+        }
+        return filePath;
+    }
+
     getLabels() {
         return this.#aiClient.getLabels();
     }
