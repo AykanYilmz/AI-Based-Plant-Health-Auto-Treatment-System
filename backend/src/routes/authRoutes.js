@@ -1,17 +1,25 @@
 const express = require('express');
-const router = express.Router();
-const authController = require('../controllers/authController');
 
-// /api/auth/register
-router.post('/register', authController.register);
+/**
+ * Kimlik doğrulama route'larını verilen controller örneğine bağlar.
+ * @param {import('../controllers/AuthController')} controller
+ */
+function createAuthRoutes(controller) {
+    const router = express.Router();
 
-// /api/auth/login
-router.post('/login', authController.login);
+    // /api/auth/register
+    router.post('/register', controller.register);
 
-// /api/auth/guest
-router.post('/guest', authController.guest);
+    // /api/auth/login
+    router.post('/login', controller.login);
 
-// /api/auth/upgrade
-router.post('/upgrade', authController.upgrade);
+    // /api/auth/guest
+    router.post('/guest', controller.guest);
 
-module.exports = router;
+    // /api/auth/upgrade
+    router.post('/upgrade', controller.upgrade);
+
+    return router;
+}
+
+module.exports = createAuthRoutes;

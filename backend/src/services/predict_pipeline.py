@@ -1,23 +1,24 @@
 """
-3 Katmanlı AI Pipeline - Bitki Analiz Sistemi (Temiz Sürüm)
+3 Katmanlı AI Pipeline - Bitki Analiz Sistemi
 ==============================================
 Katman 1: YOLO ile yaprak tespiti (bounding box → crop)
 Katman 2: MobileNet (Keras) ile bitki türü sınıflandırma
 Katman 3: Bitki türüne özel hastalık tespiti (Keras)
 
 Kullanım:
-    python predict_pipeline.py <yolo_model> <plant_model> <class_names> <image_path> <disease_models_dir>
+    Daemon (Node.js tarafından başlatılır):
+        python predict_pipeline.py --server <yolo_model> <plant_model> <class_names> <disease_models_dir> [--port 5005]
+    Tek görüntü (hata ayıklama için):
+        python predict_pipeline.py <yolo_model> <plant_model> <class_names> <image_path> <disease_models_dir>
 """
 
 import sys
 import json
 import os
 import io
-import time
-import tempfile
+import base64
 import http.server
 import threading
-import base64
 
 # Kritik: Tüm bilgi ve uyarı mesajlarını kapat (stdout/stderr kirletmesin)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -48,608 +49,349 @@ except ImportError:
     try:
         import tensorflow.keras as keras
     except ImportError:
-        print(json.dumps({
-            "basarili": False,
-            "hata": "Keras kurulu değil."
-        }))
+        print(json.dumps({"basarili": False, "hata": "Keras kurulu değil."}))
         sys.exit(1)
 
-# ─── Desteklenen hastalık modeli olan bitkiler ─────────────
-DESTEKLENEN_BITKILER = ['apple', 'bell_pepper', 'cherry', 'corn', 'grape', 'peach', 'potato', 'strawberry', 'tomato']
+
+def read_class_names(path):
+    with open(path, 'r', encoding='utf-8') as f:
+        return [line.strip() for line in f if line.strip()]
 
 
-def katman1_yaprak_tespit(yolo_model_path, image_path):
-    """
-    Katman 1: YOLO ile yaprak tespiti
-    """
-    try:
-        model = YOLO(yolo_model_path)
-        img = Image.open(image_path).convert('RGB')
-        img_w, img_h = img.size
+def log(message):
+    # stdout yerine stderr kullanılır; Node.js tarafı bunu [PYTHON] logu olarak gösterir
+    sys.stderr.write(f"{message}\n")
 
-        # YOLO inference
-        results = model.predict(
-            source=image_path,
-            conf=0.55,
-            verbose=False
-        )
 
-        if not results or len(results) == 0:
-            return None, "YOLO sonuç döndürmedi."
+class PipelineError(Exception):
+    """Pipeline'ın belirli bir katmanında, kullanıcıya gösterilebilir bir nedenle durması."""
+
+    def __init__(self, message, katman, **extra):
+        super().__init__(message)
+        self.katman = katman
+        self.extra = extra
+
+    def to_dict(self):
+        return {"basarili": False, "hata": str(self), "katman": self.katman, **self.extra}
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  KATMAN 1: YAPRAK TESPİTİ
+# ═══════════════════════════════════════════════════════════════════
+
+class LeafDetector:
+    """YOLO ile görüntüdeki en güvenilir yaprağı bulur ve kenar payıyla kırpar."""
+
+    CONFIDENCE_THRESHOLD = 0.55
+    MIN_BOX_SIZE = 80      # piksel; daha küçük kutular uzaktan çekilmiş kabul edilir
+    PADDING_RATIO = 0.15   # kırpıma eklenecek kenar payı
+
+    def __init__(self, model_path):
+        self._model = YOLO(model_path)
+
+    def detect(self, image):
+        """
+        :param image: RGB PIL görüntüsü
+        :return: {'crop', 'confidence', 'bbox', 'toplam_tespit'}
+        :raises PipelineError: yaprak bulunamazsa
+        """
+        try:
+            results = self._model.predict(source=image, conf=self.CONFIDENCE_THRESHOLD, verbose=False)
+        except Exception as e:
+            raise PipelineError(f"YOLO yaprak tespiti hatası: {e}", katman=1)
+
+        if not results:
+            raise PipelineError("YOLO sonuç döndürmedi.", katman=1)
 
         boxes = results[0].boxes
         if boxes is None or len(boxes) == 0:
-            return None, "Fotoğrafta yaprak tespit edilemedi. Lütfen yaprağı daha net çekin."
+            raise PipelineError("Fotoğrafta yaprak tespit edilemedi. Lütfen yaprağı daha net çekin.", katman=1)
 
-        # Kutulardan uygun olanları filtrele
-        valid_boxes = []
-        for box in boxes:
-            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-            w = x2 - x1
-            h = y2 - y1
-            conf = float(box.conf[0].cpu().numpy())
-
-            if w < 80 or h < 80:
-                continue
-
-            valid_boxes.append({
-                'x1': float(x1), 'y1': float(y1),
-                'x2': float(x2), 'y2': float(y2),
-                'w': float(w), 'h': float(h),
-                'conf': conf
-            })
-
+        valid_boxes = [b for b in (self._to_box(box) for box in boxes)
+                       if b['w'] >= self.MIN_BOX_SIZE and b['h'] >= self.MIN_BOX_SIZE]
         if not valid_boxes:
-            return None, "Yeterli büyüklükte yaprak tespit edilemedi. Lütfen bitkiye biraz daha yaklaşın."
+            raise PipelineError("Yeterli büyüklükte yaprak tespit edilemedi. Lütfen bitkiye biraz daha yaklaşın.", katman=1)
 
-        best_box = max(valid_boxes, key=lambda b: b['conf'])
-
-        # %15 padding ekle
-        pad_x = best_box['w'] * 0.15
-        pad_y = best_box['h'] * 0.15
-
-        crop_x1 = max(0, best_box['x1'] - pad_x)
-        crop_y1 = max(0, best_box['y1'] - pad_y)
-        crop_x2 = min(img_w, best_box['x2'] + pad_x)
-        crop_y2 = min(img_h, best_box['y2'] + pad_y)
-
-        cropped = img.crop((int(crop_x1), int(crop_y1), int(crop_x2), int(crop_y2)))
+        best = max(valid_boxes, key=lambda b: b['conf'])
+        bbox = self._padded_bbox(best, *image.size)
 
         return {
-            'crop': cropped,
-            'confidence': best_box['conf'],
-            'bbox': [int(crop_x1), int(crop_y1), int(crop_x2), int(crop_y2)],
-            'toplam_tespit': len(valid_boxes)
-        }, None
+            'crop': image.crop(bbox),
+            'confidence': best['conf'],
+            'bbox': list(bbox),
+            'toplam_tespit': len(valid_boxes),
+        }
 
-    except Exception as e:
-        return None, f"YOLO yaprak tespiti hatası: {str(e)}"
+    @staticmethod
+    def _to_box(box):
+        x1, y1, x2, y2 = (float(v) for v in box.xyxy[0].cpu().numpy())
+        return {'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
+                'w': x2 - x1, 'h': y2 - y1,
+                'conf': float(box.conf[0].cpu().numpy())}
+
+    def _padded_bbox(self, box, img_w, img_h):
+        pad_x = box['w'] * self.PADDING_RATIO
+        pad_y = box['h'] * self.PADDING_RATIO
+        return (
+            int(max(0, box['x1'] - pad_x)),
+            int(max(0, box['y1'] - pad_y)),
+            int(min(img_w, box['x2'] + pad_x)),
+            int(min(img_h, box['y2'] + pad_y)),
+        )
 
 
-def katman2_bitki_siniflandirma(plant_model_path, class_names_path, cropped_image):
+# ═══════════════════════════════════════════════════════════════════
+#  KATMAN 2 ve 3: KERAS SINIFLANDIRICILARI
+# ═══════════════════════════════════════════════════════════════════
+
+class KerasClassifier:
     """
-    Katman 2: MobileNet (Keras) ile bitki türü sınıflandırma
+    Keras görüntü sınıflandırıcıları için ortak taban sınıf.
+    Modellerin içinde Rescaling(1/127.5, -1) katmanı olduğu için girdi ham 0-255 float32 olarak verilir.
     """
-    try:
-        with open(class_names_path, 'r', encoding='utf-8') as f:
-            class_names = [line.strip() for line in f if line.strip()]
 
-        model = keras.models.load_model(plant_model_path)
+    INPUT_SIZE = (224, 224)
 
-        if cropped_image.mode != 'RGB':
-            cropped_image = cropped_image.convert('RGB')
+    def __init__(self, model, class_names):
+        self._model = model
+        self.class_names = class_names
 
-        img_resized = cropped_image.resize((224, 224), Image.LANCZOS)
-        input_data = np.array(img_resized, dtype=np.float32)
-        input_data = np.expand_dims(input_data, axis=0)
+    @classmethod
+    def from_files(cls, model_path, class_names_path):
+        return cls(keras.models.load_model(model_path), read_class_names(class_names_path))
 
-        predictions = model.predict(input_data, verbose=0)
-        output_data = predictions[0]
+    def warm_up(self):
+        self._model.predict(np.zeros((1, *self.INPUT_SIZE, 3), dtype=np.float32), verbose=0)
 
-        best_idx = int(np.argmax(output_data))
-        best_conf = float(output_data[best_idx])
+    def _predict_probabilities(self, image):
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        resized = image.resize(self.INPUT_SIZE, Image.LANCZOS)
+        batch = np.expand_dims(np.array(resized, dtype=np.float32), axis=0)
+        return self._model.predict(batch, verbose=0)[0]
 
-        if best_idx < len(class_names):
-            class_name = class_names[best_idx]
-        else:
-            class_name = f"bilinmeyen_{best_idx}"
+    def _name_of(self, index):
+        return self.class_names[index] if index < len(self.class_names) else f"bilinmeyen_{index}"
 
-        top3_indices = np.argsort(output_data)[::-1][:3]
-        top3 = []
-        for idx in top3_indices:
-            idx = int(idx)
-            name = class_names[idx] if idx < len(class_names) else f"bilinmeyen_{idx}"
-            top3.append({
-                'tur': name,
-                'confidence': float(output_data[idx])
-            })
+    def _top_k(self, probabilities, k=3):
+        return [(self._name_of(int(i)), float(probabilities[i])) for i in np.argsort(probabilities)[::-1][:k]]
 
-        return {
-            'tur': class_name,
-            'confidence': best_conf,
+
+class PlantClassifier(KerasClassifier):
+    """Katman 2: Kırpılmış yapraktan bitki türünü tahmin eder."""
+
+    MIN_CONFIDENCE = 0.50
+
+    def classify(self, image):
+        try:
+            probabilities = self._predict_probabilities(image)
+        except Exception as e:
+            raise PipelineError(f"Bitki sınıflandırma hatası: {e}", katman=2)
+
+        best_idx = int(np.argmax(probabilities))
+        result = {
+            'tur': self._name_of(best_idx),
+            'confidence': float(probabilities[best_idx]),
             'sinif_index': best_idx,
-            'top3': top3
-        }, None
+            'top3': [{'tur': name, 'confidence': conf} for name, conf in self._top_k(probabilities)],
+        }
 
-    except Exception as e:
-        return None, f"Bitki sınıflandırma hatası: {str(e)}"
+        if result['confidence'] < self.MIN_CONFIDENCE:
+            raise PipelineError("Bitki türü yeterince güvenilir tespit edilemedi.", katman=2,
+                                confidence=result['confidence'], dusuk_confidence=True)
+        return result
 
 
-def katman3_hastalik_tespit(disease_models_dir, bitki_turu, cropped_image):
-    """
-    Katman 3: Bitki türüne özel hastalık tespiti (Keras)
-    """
-    try:
-        # Normalize bitki_turu: replace space with underscore
-        bitki_turu = bitki_turu.replace(" ", "_")
+class DiseaseClassifier(KerasClassifier):
+    """Katman 3: Belirli bir bitki türüne özel hastalık tespiti."""
 
-        if bitki_turu not in DESTEKLENEN_BITKILER:
-            return {
-                'durum': 'model_yok',
-                'hastalik': None,
-                'saglikli': None,
-                'confidence': None,
-                'mesaj': f"'{bitki_turu}' için henüz hastalık modeli bulunmuyor."
-            }
+    LOW_CONFIDENCE_THRESHOLD = 0.70
 
-        model_path = os.path.join(disease_models_dir, f"{bitki_turu}_disease_model.keras")
-        class_path = os.path.join(disease_models_dir, f"{bitki_turu}_disease_classes.txt")
-
-        if not os.path.exists(model_path) or not os.path.exists(class_path):
-            return {
-                'durum': 'model_yok',
-                'hastalik': None,
-                'saglikli': None,
-                'confidence': None,
-                'mesaj': f"Model veya sınıf dosyası bulunamadı."
-            }
-
-        with open(class_path, 'r', encoding='utf-8') as f:
-            disease_classes = [line.strip() for line in f if line.strip()]
-
-        model = keras.models.load_model(model_path)
-
-        if cropped_image.mode != 'RGB':
-            cropped_image = cropped_image.convert('RGB')
-
-        img_resized = cropped_image.resize((224, 224), Image.LANCZOS)
-        input_data = np.array(img_resized, dtype=np.float32)
-        input_data = np.expand_dims(input_data, axis=0)
-
-        predictions = model.predict(input_data, verbose=0)
-        output_data = predictions[0]
-
-        best_idx = int(np.argmax(output_data))
-        best_conf = float(output_data[best_idx])
-
-        if best_idx < len(disease_classes):
-            disease_name = disease_classes[best_idx]
-        else:
-            disease_name = f"bilinmeyen_{best_idx}"
-
-        saglikli = disease_name.lower() == 'healthy'
-        dusuk_confidence = best_conf < 0.70
-
-        top3_indices = np.argsort(output_data)[::-1][:3]
-        top3 = []
-        for idx in top3_indices:
-            idx = int(idx)
-            name = disease_classes[idx] if idx < len(disease_classes) else f"bilinmeyen_{idx}"
-            top3.append({
-                'hastalik': name,
-                'confidence': float(output_data[idx])
-            })
+    def diagnose(self, image):
+        probabilities = self._predict_probabilities(image)
+        best_idx = int(np.argmax(probabilities))
+        disease_name = self._name_of(best_idx)
+        confidence = float(probabilities[best_idx])
 
         return {
             'durum': 'tespit_edildi',
             'hastalik': disease_name,
-            'saglikli': saglikli,
-            'confidence': best_conf,
+            'saglikli': disease_name.lower() == 'healthy',
+            'confidence': confidence,
             'sinif_index': best_idx,
-            'dusuk_confidence': dusuk_confidence,
-            'top3': top3,
-            'tum_sonuclar': {disease_classes[i]: float(output_data[i]) for i in range(len(disease_classes))}
+            'dusuk_confidence': confidence < self.LOW_CONFIDENCE_THRESHOLD,
+            'top3': [{'hastalik': name, 'confidence': conf} for name, conf in self._top_k(probabilities)],
+            'tum_sonuclar': {self._name_of(i): float(p) for i, p in enumerate(probabilities)},
         }
 
-    except Exception as e:
+
+# ═══════════════════════════════════════════════════════════════════
+#  PIPELINE
+# ═══════════════════════════════════════════════════════════════════
+
+class PlantDiagnosisPipeline:
+    """Üç katmanı sırasıyla çalıştırır. Tüm modeller oluşturulurken bir kez belleğe yüklenir."""
+
+    SUPPORTED_PLANTS = ['apple', 'bell_pepper', 'cherry', 'corn', 'grape', 'peach', 'potato', 'strawberry', 'tomato']
+
+    def __init__(self, leaf_detector, plant_classifier, disease_classifiers):
+        self._leaf_detector = leaf_detector
+        self._plant_classifier = plant_classifier
+        self._disease_classifiers = disease_classifiers
+
+    @classmethod
+    def from_paths(cls, yolo_model_path, plant_model_path, class_names_path, disease_models_dir):
+        log("[Daemon] YOLO modeli yükleniyor...")
+        leaf_detector = LeafDetector(yolo_model_path)
+
+        log("[Daemon] Bitki sınıflandırma modeli yükleniyor...")
+        plant_classifier = PlantClassifier.from_files(plant_model_path, class_names_path)
+
+        disease_classifiers = {}
+        for plant in cls.SUPPORTED_PLANTS:
+            model_path = os.path.join(disease_models_dir, f"{plant}_disease_model.keras")
+            class_path = os.path.join(disease_models_dir, f"{plant}_disease_classes.txt")
+            if os.path.exists(model_path) and os.path.exists(class_path):
+                log(f"[Daemon] {plant} hastalık modeli yükleniyor...")
+                disease_classifiers[plant] = DiseaseClassifier.from_files(model_path, class_path)
+
+        plant_classifier.warm_up()
+        log("[Daemon] Warm-up tamamlandı.")
+        return cls(leaf_detector, plant_classifier, disease_classifiers)
+
+    def run(self, image_bytes):
+        """Görüntüyü analiz eder; her durumda JSON'a çevrilebilir bir sözlük döndürür."""
+        try:
+            image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+            leaf = self._leaf_detector.detect(image)
+            plant = self._plant_classifier.classify(leaf['crop'])
+            disease = self._diagnose_disease(plant['tur'], leaf['crop'])
+        except PipelineError as e:
+            return e.to_dict()
+        except Exception as e:
+            return {"basarili": False, "hata": str(e)}
+
         return {
-            'durum': 'hata',
-            'hastalik': None,
-            'saglikli': None,
-            'confidence': None,
-            'mesaj': f"Hastalık tespiti hatası: {str(e)}"
-        }
-
-
-def run_pipeline():
-    """Ana pipeline fonksiyonu - CLI Modu"""
-    try:
-        if len(sys.argv) < 6:
-            print(json.dumps({
-                "basarili": False,
-                "hata": "Eksik argümanlar."
-            }))
-            return
-
-        yolo_model_path = sys.argv[1]
-        plant_model_path = sys.argv[2]
-        class_names_path = sys.argv[3]
-        image_path = sys.argv[4]
-        disease_models_dir = sys.argv[5]
-
-        for fpath in [yolo_model_path, plant_model_path, class_names_path, image_path]:
-            if not os.path.exists(fpath):
-                print(json.dumps({
-                    "basarili": False,
-                    "hata": f"Dosya bulunamadı: {fpath}"
-                }))
-                return
-
-        katman1_sonuc, katman1_hata = katman1_yaprak_tespit(yolo_model_path, image_path)
-        if katman1_hata:
-            print(json.dumps({"basarili": False, "hata": katman1_hata, "katman": 1}))
-            return
-
-        katman2_sonuc, katman2_hata = katman2_bitki_siniflandirma(plant_model_path, class_names_path, katman1_sonuc['crop'])
-        if katman2_hata:
-            print(json.dumps({"basarili": False, "hata": katman2_hata, "katman": 2}))
-            return
-
-        if katman2_sonuc['confidence'] < 0.50:
-            print(json.dumps({
-                "basarili": False,
-                "hata": "Bitki türü yeterince güvenilir tespit edilemedi.",
-                "katman": 2,
-                "confidence": katman2_sonuc['confidence']
-            }))
-            return
-
-        bitki_turu = katman2_sonuc['tur']
-        katman3_sonuc = katman3_hastalik_tespit(disease_models_dir, bitki_turu, katman1_sonuc['crop'])
-
-        print(json.dumps({
             "basarili": True,
             "katman1_yaprak": {
                 "tespit_edildi": True,
-                "confidence": katman1_sonuc['confidence'],
-                "bbox": katman1_sonuc['bbox'],
-                "toplam_tespit": katman1_sonuc['toplam_tespit']
+                "confidence": leaf['confidence'],
+                "bbox": leaf['bbox'],
+                "toplam_tespit": leaf['toplam_tespit'],
+                "crop_base64": self._to_base64_jpeg(leaf['crop']),
             },
-            "katman2_bitki": katman2_sonuc,
-            "katman3_hastalik": katman3_sonuc
-        }))
-        sys.exit(0)
+            "katman2_bitki": plant,
+            "katman3_hastalik": disease,
+        }
 
-    except Exception as e:
-        print(json.dumps({"basarili": False, "hata": str(e)}))
-        sys.exit(1)
+    def _diagnose_disease(self, plant_type, crop):
+        plant_key = plant_type.replace(" ", "_")
+        classifier = self._disease_classifiers.get(plant_key)
+        if classifier is None:
+            return self._disease_status('model_yok', f"'{plant_key}' için henüz hastalık modeli bulunmuyor.")
+        try:
+            return classifier.diagnose(crop)
+        except Exception as e:
+            return self._disease_status('hata', f"Hastalık tespiti hatası: {e}")
+
+    @staticmethod
+    def _disease_status(durum, mesaj):
+        return {'durum': durum, 'hastalik': None, 'saglikli': None, 'confidence': None, 'mesaj': mesaj}
+
+    @staticmethod
+    def _to_base64_jpeg(image):
+        buffered = io.BytesIO()
+        image.save(buffered, format="JPEG")
+        return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 
 # ═══════════════════════════════════════════════════════════════════
 #  DAEMON (HTTP SUNUCU) MODU
 # ═══════════════════════════════════════════════════════════════════
 
-_yolo_model = None
-_plant_model = None
-_class_names = None
-_disease_models = {}
-_disease_classes = {}
+class InferenceServer:
+    """Pipeline'ı localhost üzerinde HTTP ile sunar (POST /predict, GET /health)."""
 
+    def __init__(self, pipeline, port, host='127.0.0.1'):
+        self._address = (host, port)
+        self._httpd = http.server.HTTPServer(self._address, self._make_handler(pipeline))
 
-def load_all_models(yolo_model_path, plant_model_path, class_names_path, disease_models_dir):
-    global _yolo_model, _plant_model, _class_names
-    global _disease_models, _disease_classes
+    def serve_forever(self):
+        thread = threading.Thread(target=self._httpd.serve_forever, daemon=True)
+        thread.start()
+        log(f"\n🌿 Bitki Analiz Daemon Sunucusu HAZIR (Adres: http://{self._address[0]}:{self._address[1]})")
+        try:
+            thread.join()
+        except KeyboardInterrupt:
+            self._httpd.shutdown()
 
-    sys.stderr.write("[Daemon] YOLO modeli yükleniyor...\n")
-    _yolo_model = YOLO(yolo_model_path)
+    @staticmethod
+    def _make_handler(pipeline):
+        class InferenceHandler(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                if self.path != '/predict':
+                    self._json_response(404, {"basarili": False, "hata": "Endpoint bulunamadı"})
+                    return
+                try:
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    if content_length == 0:
+                        self._json_response(400, {"basarili": False, "hata": "Boş istek gövdesi"})
+                        return
+                    self._json_response(200, pipeline.run(self.rfile.read(content_length)))
+                except Exception as e:
+                    self._json_response(500, {"basarili": False, "hata": str(e)})
 
-    sys.stderr.write("[Daemon] Bitki sınıflandırma modeli yükleniyor...\n")
-    _plant_model = keras.models.load_model(plant_model_path)
+            def do_GET(self):
+                if self.path == '/health':
+                    self._json_response(200, {"status": "ready"})
+                else:
+                    self._json_response(404, {"basarili": False, "hata": "Endpoint bulunamadı"})
 
-    with open(class_names_path, 'r', encoding='utf-8') as f:
-        _class_names = [line.strip() for line in f if line.strip()]
+            def _json_response(self, status_code, data):
+                body = json.dumps(data, ensure_ascii=False).encode('utf-8')
+                self.send_response(status_code)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
 
-    for bitki in DESTEKLENEN_BITKILER:
-        model_path = os.path.join(disease_models_dir, f"{bitki}_disease_model.keras")
-        class_path = os.path.join(disease_models_dir, f"{bitki}_disease_classes.txt")
-
-        if os.path.exists(model_path) and os.path.exists(class_path):
-            sys.stderr.write(f"[Daemon] {bitki} hastalık modeli yükleniyor...\n")
-            _disease_models[bitki] = keras.models.load_model(model_path)
-            with open(class_path, 'r', encoding='utf-8') as f:
-                _disease_classes[bitki] = [line.strip() for line in f if line.strip()]
-
-    # Warm-up
-    dummy = np.zeros((1, 224, 224, 3), dtype=np.float32)
-    _plant_model.predict(dummy, verbose=0)
-    sys.stderr.write("[Daemon] Warm-up tamamlandı.\n")
-
-
-def katman1_yaprak_tespit_inmemory(pil_image):
-    global _yolo_model
-    tmp_path = None
-    try:
-        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
-            tmp_path = tmp.name
-            pil_image.save(tmp, format='JPEG')
-
-        img_w, img_h = pil_image.size
-        results = _yolo_model.predict(source=tmp_path, conf=0.55, verbose=False)
-
-        if not results or len(results) == 0:
-            return None, "YOLO sonuç döndürmedi."
-
-        boxes = results[0].boxes
-        if boxes is None or len(boxes) == 0:
-            return None, "Fotoğrafta yaprak tespit edilemedi."
-
-        valid_boxes = []
-        for box in boxes:
-            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-            w = x2 - x1
-            h = y2 - y1
-            conf = float(box.conf[0].cpu().numpy())
-
-            if w < 80 or h < 80:
-                continue
-
-            valid_boxes.append({
-                'x1': float(x1), 'y1': float(y1),
-                'x2': float(x2), 'y2': float(y2),
-                'w': float(w), 'h': float(h),
-                'conf': conf
-            })
-
-        if not valid_boxes:
-            return None, "Yeterli büyüklükte yaprak tespit edilemedi."
-
-        best_box = max(valid_boxes, key=lambda b: b['conf'])
-        pad_x = best_box['w'] * 0.15
-        pad_y = best_box['h'] * 0.15
-
-        crop_x1 = max(0, best_box['x1'] - pad_x)
-        crop_y1 = max(0, best_box['y1'] - pad_y)
-        crop_x2 = min(img_w, best_box['x2'] + pad_x)
-        crop_y2 = min(img_h, best_box['y2'] + pad_y)
-
-        cropped = pil_image.crop((int(crop_x1), int(crop_y1), int(crop_x2), int(crop_y2)))
-        return {
-            'crop': cropped,
-            'confidence': best_box['conf'],
-            'bbox': [int(crop_x1), int(crop_y1), int(crop_x2), int(crop_y2)],
-            'toplam_tespit': len(valid_boxes)
-        }, None
-    except Exception as e:
-        return None, str(e)
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.unlink(tmp_path)
-            except OSError:
+            def log_message(self, format, *args):
                 pass
 
-
-def katman2_bitki_siniflandirma_inmemory(cropped_image):
-    global _plant_model, _class_names
-    try:
-        if cropped_image.mode != 'RGB':
-            cropped_image = cropped_image.convert('RGB')
-
-        img_resized = cropped_image.resize((224, 224), Image.LANCZOS)
-        input_data = np.array(img_resized, dtype=np.float32)
-        input_data = np.expand_dims(input_data, axis=0)
-
-        predictions = _plant_model.predict(input_data, verbose=0)
-        output_data = predictions[0]
-
-        best_idx = int(np.argmax(output_data))
-        best_conf = float(output_data[best_idx])
-
-        if best_idx < len(_class_names):
-            class_name = _class_names[best_idx]
-        else:
-            class_name = f"bilinmeyen_{best_idx}"
-
-        top3_indices = np.argsort(output_data)[::-1][:3]
-        top3 = []
-        for idx in top3_indices:
-            idx = int(idx)
-            name = _class_names[idx] if idx < len(_class_names) else f"bilinmeyen_{idx}"
-            top3.append({
-                'tur': name,
-                'confidence': float(output_data[idx])
-            })
-
-        return {
-            'tur': class_name,
-            'confidence': best_conf,
-            'sinif_index': best_idx,
-            'top3': top3
-        }, None
-    except Exception as e:
-        return None, str(e)
+        return InferenceHandler
 
 
-def katman3_hastalik_tespit_inmemory(bitki_turu, cropped_image):
-    global _disease_models, _disease_classes
-    try:
-        # Normalize bitki_turu: replace space with underscore
-        bitki_turu = bitki_turu.replace(" ", "_")
+def main(argv):
+    if len(argv) >= 2 and argv[1] == '--server':
+        if len(argv) < 6:
+            sys.exit(1)
+        yolo_path, plant_path, class_path, disease_dir = argv[2:6]
+        port = 5005
+        if '--port' in argv:
+            port_idx = argv.index('--port')
+            if port_idx + 1 < len(argv):
+                port = int(argv[port_idx + 1])
 
-        if bitki_turu not in DESTEKLENEN_BITKILER or bitki_turu not in _disease_models:
-            return {
-                'durum': 'model_yok',
-                'hastalik': None,
-                'saglikli': None,
-                'confidence': None,
-                'mesaj': f"Hastalık modeli bulunmuyor."
-            }
+        pipeline = PlantDiagnosisPipeline.from_paths(yolo_path, plant_path, class_path, disease_dir)
+        InferenceServer(pipeline, port).serve_forever()
+        return
 
-        model = _disease_models[bitki_turu]
-        disease_classes = _disease_classes[bitki_turu]
+    # Tek görüntü modu (hata ayıklama)
+    if len(argv) < 6:
+        print(json.dumps({"basarili": False, "hata": "Eksik argümanlar."}))
+        sys.exit(1)
+    yolo_path, plant_path, class_path, image_path, disease_dir = argv[1:6]
+    for fpath in (yolo_path, plant_path, class_path, image_path):
+        if not os.path.exists(fpath):
+            print(json.dumps({"basarili": False, "hata": f"Dosya bulunamadı: {fpath}"}))
+            sys.exit(1)
 
-        if cropped_image.mode != 'RGB':
-            cropped_image = cropped_image.convert('RGB')
-
-        img_resized = cropped_image.resize((224, 224), Image.LANCZOS)
-        input_data = np.array(img_resized, dtype=np.float32)
-        input_data = np.expand_dims(input_data, axis=0)
-
-        predictions = model.predict(input_data, verbose=0)
-        output_data = predictions[0]
-
-        best_idx = int(np.argmax(output_data))
-        best_conf = float(output_data[best_idx])
-
-        if best_idx < len(disease_classes):
-            disease_name = disease_classes[best_idx]
-        else:
-            disease_name = f"bilinmeyen_{best_idx}"
-
-        saglikli = disease_name.lower() == 'healthy'
-        dusuk_confidence = best_conf < 0.70
-
-        top3_indices = np.argsort(output_data)[::-1][:3]
-        top3 = []
-        for idx in top3_indices:
-            idx = int(idx)
-            name = disease_classes[idx] if idx < len(disease_classes) else f"bilinmeyen_{idx}"
-            top3.append({
-                'hastalik': name,
-                'confidence': float(output_data[idx])
-            })
-
-        return {
-            'durum': 'tespit_edildi',
-            'hastalik': disease_name,
-            'saglikli': saglikli,
-            'confidence': best_conf,
-            'sinif_index': best_idx,
-            'dusuk_confidence': dusuk_confidence,
-            'top3': top3,
-            'tum_sonuclar': {disease_classes[i]: float(output_data[i]) for i in range(len(disease_classes))}
-        }
-    except Exception as e:
-        return {
-            'durum': 'hata',
-            'hastalik': None,
-            'saglikli': None,
-            'confidence': None,
-            'mesaj': str(e)
-        }
-
-
-def run_pipeline_inmemory(image_bytes):
-    try:
-        pil_image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-        katman1_sonuc, katman1_hata = katman1_yaprak_tespit_inmemory(pil_image)
-        if katman1_hata:
-            return {"basarili": False, "hata": katman1_hata, "katman": 1}
-
-        katman2_sonuc, katman2_hata = katman2_bitki_siniflandirma_inmemory(katman1_sonuc['crop'])
-        if katman2_hata:
-            return {"basarili": False, "hata": katman2_hata, "katman": 2}
-
-        if katman2_sonuc['confidence'] < 0.50:
-            return {
-                "basarili": False,
-                "hata": "Bitki türü yeterince güvenilir tespit edilemedi.",
-                "katman": 2,
-                "confidence": katman2_sonuc['confidence']
-            }
-
-        bitki_turu = katman2_sonuc['tur']
-        katman3_sonuc = katman3_hastalik_tespit_inmemory(bitki_turu, katman1_sonuc['crop'])
-
-        buffered = io.BytesIO()
-        katman1_sonuc['crop'].save(buffered, format="JPEG")
-        crop_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
-
-        return {
-            "basarili": True,
-            "katman1_yaprak": {
-                "tespit_edildi": True,
-                "confidence": katman1_sonuc['confidence'],
-                "bbox": katman1_sonuc['bbox'],
-                "toplam_tespit": katman1_sonuc['toplam_tespit'],
-                "crop_base64": crop_base64
-            },
-            "katman2_bitki": katman2_sonuc,
-            "katman3_hastalik": katman3_sonuc
-        }
-    except Exception as e:
-        return {"basarili": False, "hata": str(e)}
-
-
-class InferenceHandler(http.server.BaseHTTPRequestHandler):
-    def do_POST(self):
-        if self.path != '/predict':
-            self._json_yanit(404, {"basarili": False, "hata": "Endpoint bulunamadı"})
-            return
-
-        try:
-            content_length = int(self.headers.get('Content-Length', 0))
-            if content_length == 0:
-                self._json_yanit(400, {"basarili": False, "hata": "Boş istek gövdesi"})
-                return
-
-            image_bytes = self.rfile.read(content_length)
-            sonuc = run_pipeline_inmemory(image_bytes)
-            self._json_yanit(200, sonuc)
-        except Exception as e:
-            self._json_yanit(500, {"basarili": False, "hata": str(e)})
-
-    def do_GET(self):
-        if self.path == '/health':
-            self._json_yanit(200, {"status": "ready"})
-        else:
-            self._json_yanit(404, {"basarili": False, "hata": "Endpoint bulunamadı"})
-
-    def _json_yanit(self, status_code, data):
-        body = json.dumps(data, ensure_ascii=False).encode('utf-8')
-        self.send_response(status_code)
-        self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Content-Length', str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, format, *args):
-        pass
-
-
-def run_server(port, yolo_path, plant_path, class_path, disease_dir):
-    load_all_models(yolo_path, plant_path, class_path, disease_dir)
-
-    server_address = ('127.0.0.1', port)
-    httpd = http.server.HTTPServer(server_address, InferenceHandler)
-
-    server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    server_thread.start()
-
-    sys.stderr.write(f"\n🌿 Bitki Analiz Daemon Sunucusu HAZIR (Adres: http://127.0.0.1:{port})\n")
-
-    try:
-        server_thread.join()
-    except KeyboardInterrupt:
-        httpd.shutdown()
+    pipeline = PlantDiagnosisPipeline.from_paths(yolo_path, plant_path, class_path, disease_dir)
+    with open(image_path, 'rb') as f:
+        result = pipeline.run(f.read())
+    result.get('katman1_yaprak', {}).pop('crop_base64', None)  # Konsolu devasa base64 ile doldurma
+    print(json.dumps(result, ensure_ascii=False))
 
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 2 and sys.argv[1] == '--server':
-        if len(sys.argv) < 6:
-            sys.exit(1)
-
-        yolo_path = sys.argv[2]
-        plant_path = sys.argv[3]
-        class_path = sys.argv[4]
-        disease_dir = sys.argv[5]
-
-        port = 5005
-        if '--port' in sys.argv:
-            port_idx = sys.argv.index('--port')
-            if port_idx + 1 < len(sys.argv):
-                port = int(sys.argv[port_idx + 1])
-
-        run_server(port, yolo_path, plant_path, class_path, disease_dir)
-    else:
-        run_pipeline()
+    main(sys.argv)

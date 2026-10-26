@@ -1,14 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-
-// Log dizinini ve dosyasını ayarla
-const LOGS_DIR = path.join(__dirname, '..', '..', 'logs');
-const LOG_FILE = path.join(LOGS_DIR, 'app.log');
-
-// Log dizini yoksa oluştur
-if (!fs.existsSync(LOGS_DIR)) {
-    fs.mkdirSync(LOGS_DIR, { recursive: true });
-}
+const { LOGS_DIR } = require('../config/paths');
 
 // Konsol için ANSI renk kodları
 const COLORS = {
@@ -21,65 +13,67 @@ const COLORS = {
 };
 
 /**
- * Zaman damgası üretir (TR formatına uygun)
+ * Konsola renkli, log dosyasına zaman damgalı satırlar yazan logger.
  */
-function getTimestamp() {
-    const now = new Date();
-    return now.toLocaleString('tr-TR', { hour12: false });
-}
+class Logger {
+    #logFile;
 
-/**
- * Log satırını dosyaya asenkron yazar (arka planda)
- */
-function writeToFile(level, message) {
-    const timestamp = new Date().toISOString();
-    const logLine = `[${timestamp}] [${level}] ${message}\n`;
-    
-    // Hataları engellemek için sessizce append et
-    fs.appendFile(LOG_FILE, logLine, { encoding: 'utf8' }, (err) => {
-        if (err) {
-            process.stderr.write(`❌ Log dosyasına yazılamadı: ${err.message}\n`);
+    constructor(logsDir) {
+        if (!fs.existsSync(logsDir)) {
+            fs.mkdirSync(logsDir, { recursive: true });
         }
-    });
-}
+        this.#logFile = path.join(logsDir, 'app.log');
+    }
 
-const logger = {
-    info: (msg, ...args) => {
-        const message = args.length ? `${msg} ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}` : msg;
-        console.log(`${COLORS.info}[BILGI] [${getTimestamp()}]${COLORS.reset} ${message}`);
-        writeToFile('INFO', message);
-    },
-    
-    success: (msg, ...args) => {
-        const message = args.length ? `${msg} ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}` : msg;
-        console.log(`${COLORS.success}[BASARI] [${getTimestamp()}]${COLORS.reset} ${message}`);
-        writeToFile('SUCCESS', message);
-    },
-    
-    warn: (msg, ...args) => {
-        const message = args.length ? `${msg} ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}` : msg;
-        console.warn(`${COLORS.warn}[UYARI] [${getTimestamp()}]${COLORS.reset} ${message}`);
-        writeToFile('WARN', message);
-    },
-    
-    error: (msg, errorObj = null) => {
+    info(msg, ...args) {
+        this.#log('INFO', 'BILGI', COLORS.info, Logger.#format(msg, args), console.log);
+    }
+
+    success(msg, ...args) {
+        this.#log('SUCCESS', 'BASARI', COLORS.success, Logger.#format(msg, args), console.log);
+    }
+
+    warn(msg, ...args) {
+        this.#log('WARN', 'UYARI', COLORS.warn, Logger.#format(msg, args), console.warn);
+    }
+
+    error(msg, errorObj = null) {
         let message = msg;
         if (errorObj) {
             message += ` | Hata: ${errorObj.message || errorObj}`;
             if (errorObj.stack) {
                 // Stack trace'i sadece log dosyasına detaylı yaz, konsola kısa yaz
-                writeToFile('ERROR_STACK', errorObj.stack);
+                this.#writeToFile('ERROR_STACK', errorObj.stack);
             }
         }
-        console.error(`${COLORS.error}[HATA] [${getTimestamp()}]${COLORS.reset} ${message}`);
-        writeToFile('ERROR', message);
-    },
-
-    python: (msg) => {
-        // Python Daemon çıktısı için özel format
-        console.log(`${COLORS.magenta}[PYTHON] [${getTimestamp()}]${COLORS.reset} ${msg}`);
-        writeToFile('PYTHON', msg);
+        this.#log('ERROR', 'HATA', COLORS.error, message, console.error);
     }
-};
 
-module.exports = logger;
+    python(msg) {
+        // Python Daemon çıktısı için özel format
+        this.#log('PYTHON', 'PYTHON', COLORS.magenta, msg, console.log);
+    }
+
+    #log(fileLevel, consoleLabel, color, message, sink) {
+        const timestamp = new Date().toLocaleString('tr-TR', { hour12: false });
+        sink(`${color}[${consoleLabel}] [${timestamp}]${COLORS.reset} ${message}`);
+        this.#writeToFile(fileLevel, message);
+    }
+
+    #writeToFile(level, message) {
+        const logLine = `[${new Date().toISOString()}] [${level}] ${message}\n`;
+        // Hataları engellemek için sessizce append et (arka planda)
+        fs.appendFile(this.#logFile, logLine, { encoding: 'utf8' }, (err) => {
+            if (err) {
+                process.stderr.write(`❌ Log dosyasına yazılamadı: ${err.message}\n`);
+            }
+        });
+    }
+
+    static #format(msg, args) {
+        if (!args.length) return msg;
+        return `${msg} ${args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ')}`;
+    }
+}
+
+module.exports = new Logger(LOGS_DIR);

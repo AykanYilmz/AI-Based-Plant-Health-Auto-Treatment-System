@@ -1,21 +1,29 @@
 const express = require('express');
-const router = express.Router();
 const upload = require('../middlewares/uploadMiddleware');
-const diagnoseController = require('../controllers/diagnoseController');
 
-// POST /api/diagnose - Fotoğraf yükle ve AI tahmin al
-router.post('/diagnose', upload.single('image'), diagnoseController.diagnose);
+/**
+ * Teşhis route'larını verilen controller örneğine bağlar.
+ * @param {import('../controllers/DiagnoseController')} controller
+ */
+function createDiagnoseRoutes(controller) {
+    const router = express.Router();
 
-// GET /api/labels - Desteklenen etiket listesi
-router.get('/labels', diagnoseController.getLabels);
+    // POST /api/diagnose - Fotoğraf yükle ve AI tahmin al
+    router.post('/diagnose', upload.single('image'), controller.diagnose);
 
-// GET /api/history - Teşhis geçmişini listele
-router.get('/history', diagnoseController.getHistory);
+    // GET /api/labels - Desteklenen etiket listesi
+    router.get('/labels', controller.getLabels);
 
-// DELETE /api/history/:id - Teşhis kaydını sil
-router.delete('/history/:id', diagnoseController.deleteHistory);
+    // GET /api/history - Teşhis geçmişini listele
+    router.get('/history', controller.getHistory);
 
-// DELETE /api/history - Tüm teşhis geçmişini sil
-router.delete('/history', diagnoseController.deleteAllHistory);
+    // DELETE /api/history/:id - Teşhis kaydını sil
+    router.delete('/history/:id', controller.deleteHistory);
 
-module.exports = router;
+    // DELETE /api/history - Tüm teşhis geçmişini sil
+    router.delete('/history', controller.deleteAllHistory);
+
+    return router;
+}
+
+module.exports = createDiagnoseRoutes;
