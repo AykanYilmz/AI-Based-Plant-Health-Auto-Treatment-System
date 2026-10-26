@@ -1,0 +1,21 @@
+# IDE ayarları (Android Studio / IntelliJ, VS Code kullanıcı ayarları)
+.idea/
+*.iml
+
+# İşletim sistemi dosyaları
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Ortam değişkenleri ve sertifikalar (asla commit'lenmez)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
