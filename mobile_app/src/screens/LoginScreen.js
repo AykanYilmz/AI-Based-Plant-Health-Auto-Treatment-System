@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { sessionStore } from '../services/SessionStore';
+import { isValidEmail, registrationError } from '../utils/credentialRules';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -62,12 +63,6 @@ export default function LoginScreen() {
         setErrorMsg('');
     }, [activeTab, loginEmail, loginPassword, name, registerEmail, registerPassword, confirmPassword]);
 
-    // E-posta format kontrolü
-    const isValidEmail = (val) => {
-        const reg = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-        return reg.test(val);
-    };
-
     const handleLoginSubmit = async () => {
         if (!loginEmail.trim() || !loginPassword) {
             setErrorMsg('Lütfen e-posta ve şifrenizi girin.');
@@ -88,20 +83,14 @@ export default function LoginScreen() {
     };
 
     const handleRegisterSubmit = async () => {
-        if (!name.trim() || !registerEmail.trim() || !registerPassword || !confirmPassword) {
-            setErrorMsg('Lütfen tüm alanları doldurun.');
-            return;
-        }
-        if (!isValidEmail(registerEmail)) {
-            setErrorMsg('Geçerli bir e-posta adresi girin.');
-            return;
-        }
-        if (registerPassword.length < 6) {
-            setErrorMsg('Şifreniz en az 6 karakter olmalıdır.');
-            return;
-        }
-        if (registerPassword !== confirmPassword) {
-            setErrorMsg('Şifreler uyuşmuyor.');
+        const formError = registrationError({
+            name,
+            email: registerEmail,
+            password: registerPassword,
+            confirmPassword,
+        });
+        if (formError) {
+            setErrorMsg(formError);
             return;
         }
 

@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CustomAlert from '../components/CustomAlert';
 import { useCustomAlert } from '../hooks/useCustomAlert';
+import { registrationError } from '../utils/credentialRules';
 
 export default function MenuScreen() {
     const { isDark, colors, toggleTheme } = useTheme();
@@ -44,24 +45,9 @@ export default function MenuScreen() {
     const [showPassword, setShowPassword] = useState(false);
 
     const handleUpgradeSubmit = async () => {
-        if (!name.trim() || !email.trim() || !password || !confirmPassword) {
-            setErrorMsg('Lütfen tüm alanları doldurun.');
-            return;
-        }
-
-        const emailReg = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-        if (!emailReg.test(email)) {
-            setErrorMsg('Geçerli bir e-posta adresi girin.');
-            return;
-        }
-
-        if (password.length < 6) {
-            setErrorMsg('Şifreniz en az 6 karakter olmalıdır.');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            setErrorMsg('Şifreler uyuşmuyor.');
+        const formError = registrationError({ name, email, password, confirmPassword });
+        if (formError) {
+            setErrorMsg(formError);
             return;
         }
 

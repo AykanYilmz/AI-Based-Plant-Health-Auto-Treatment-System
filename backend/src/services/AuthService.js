@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const logger = require('../utils/logger');
+const CredentialPolicy = require('../domain/CredentialPolicy');
 const {
     ValidationError,
     UnauthorizedError,
@@ -26,10 +27,8 @@ class AuthService {
         this.#tokens = tokenService;
     }
 
-    async register({ name, email, password }) {
-        if (!name || !email || !password) {
-            throw new ValidationError('Lütfen isim, e-posta ve şifre alanlarını doldurun.');
-        }
+    async register(input) {
+        const { name, email, password } = CredentialPolicy.validateRegistration(input);
         await this.#requireDatabase();
 
         if (await this.#users.emailExists(email)) {
@@ -46,10 +45,12 @@ class AuthService {
         return this.#startSession(user);
     }
 
-    async login({ email, password }) {
-        if (!email || !password) {
+    async login({ email: rawEmail, password }) {
+        if (!rawEmail || !password) {
             throw new ValidationError('Lütfen e-posta ve şifre alanlarını doldurun.');
         }
+        // Giriş sırasında şifre kuralları uygulanmaz (kurallardan önce açılmış hesaplar da girebilmeli)
+        const email = CredentialPolicy.normalizeEmail(rawEmail);
         await this.#requireDatabase();
 
         const record = await this.#users.findRegisteredByEmailWithPassword(email);
@@ -93,10 +94,8 @@ class AuthService {
      * Oturumdaki misafir hesabı kayıtlı üyeliğe yükseltir. Kayıtlı hesaplar yükseltilemez.
      * @param {string} userUuid - Doğrulanmış access token'dan gelen kullanıcı kimliği
      */
-    async upgrade(userUuid, { name, email, password }) {
-        if (!name || !email || !password) {
-            throw new ValidationError('Eksik parametreler.');
-        }
+    async upgrade(userUuid, input) {
+        const { name, email, password } = CredentialPolicy.validateRegistration(input);
         await this.#requireDatabase();
 
         const existing = await this.#users.findByUuid(userUuid);

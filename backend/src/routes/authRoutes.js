@@ -4,15 +4,19 @@ const express = require('express');
  * Kimlik doğrulama route'larını verilen controller örneğine bağlar.
  * @param {import('../controllers/AuthController')} controller
  * @param {import('express').RequestHandler} authenticate - Access token doğrulama middleware'i
+ * @param {ReturnType<import('../middlewares/rateLimiters')>} limiters
  */
-function createAuthRoutes(controller, authenticate) {
+function createAuthRoutes(controller, authenticate, limiters) {
     const router = express.Router();
+
+    // /api/auth/login - Başarısız denemeler ayrıca IP + e-posta başına sınırlanır
+    router.post('/login', limiters.login, controller.login);
+
+    // Diğer oturum işlemleri IP başına sınırlanır
+    router.use(limiters.auth);
 
     // /api/auth/register
     router.post('/register', controller.register);
-
-    // /api/auth/login
-    router.post('/login', controller.login);
 
     // /api/auth/guest
     router.post('/guest', controller.guest);

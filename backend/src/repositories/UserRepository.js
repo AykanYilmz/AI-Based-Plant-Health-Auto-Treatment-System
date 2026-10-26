@@ -19,16 +19,17 @@ class UserRepository {
     /** Giriş doğrulaması için şifre hash'i ile birlikte kayıtlı kullanıcıyı getirir. */
     async findRegisteredByEmailWithPassword(email) {
         const res = await this.#db.query(
-            `SELECT ${PUBLIC_COLUMNS}, password_hash FROM users WHERE email = $1 AND user_type = 'registered'`,
+            `SELECT ${PUBLIC_COLUMNS}, password_hash FROM users WHERE LOWER(email) = LOWER($1) AND user_type = 'registered'`,
             [email]
         );
         return res.rows[0] || null;
     }
 
     async emailExists(email, excludeUuid = null) {
+        // Büyük/küçük harf farkı olan eski kayıtlar da çakışma sayılır
         const res = excludeUuid
-            ? await this.#db.query('SELECT 1 FROM users WHERE email = $1 AND uuid != $2', [email, excludeUuid])
-            : await this.#db.query('SELECT 1 FROM users WHERE email = $1', [email]);
+            ? await this.#db.query('SELECT 1 FROM users WHERE LOWER(email) = LOWER($1) AND uuid != $2', [email, excludeUuid])
+            : await this.#db.query('SELECT 1 FROM users WHERE LOWER(email) = LOWER($1)', [email]);
         return res.rowCount > 0;
     }
 

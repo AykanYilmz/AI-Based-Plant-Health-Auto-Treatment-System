@@ -62,7 +62,7 @@ describe('AuthService', () => {
             const { service, deps } = createService();
             deps.userRepository.findByUuid.mockResolvedValue(registeredUser);
 
-            await expect(service.upgrade('reg-uuid', { name: 'X', email: 'x@x.com', password: 'p' }))
+            await expect(service.upgrade('reg-uuid', { name: 'Xavier', email: 'x@x.com', password: 'gizli1234' }))
                 .rejects.toBeInstanceOf(NotFoundError);
             expect(deps.userRepository.upgradeGuest).not.toHaveBeenCalled();
         });
@@ -72,12 +72,12 @@ describe('AuthService', () => {
             deps.userRepository.findByUuid.mockResolvedValue(guestUser);
             deps.userRepository.upgradeGuest.mockResolvedValue({ ...guestUser, user_type: 'registered' });
 
-            const user = await service.upgrade('guest-uuid', { name: 'Ayşe', email: 'a@x.com', password: 'secret' });
+            const user = await service.upgrade('guest-uuid', { name: 'Ayşe', email: 'a@x.com', password: 'secret123' });
 
             expect(user.user_type).toBe('registered');
             const [uuid, { passwordHash }] = deps.userRepository.upgradeGuest.mock.calls[0];
             expect(uuid).toBe('guest-uuid');
-            await expect(bcrypt.compare('secret', passwordHash)).resolves.toBe(true);
+            await expect(bcrypt.compare('secret123', passwordHash)).resolves.toBe(true);
         });
     });
 

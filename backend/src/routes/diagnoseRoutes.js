@@ -5,16 +5,17 @@ const upload = require('../middlewares/uploadMiddleware');
  * Teşhis route'larını verilen controller örneğine bağlar.
  * @param {import('../controllers/DiagnoseController')} controller
  * @param {import('express').RequestHandler} authenticate - Access token doğrulama middleware'i
+ * @param {ReturnType<import('../middlewares/rateLimiters')>} limiters
  */
-function createDiagnoseRoutes(controller, authenticate) {
+function createDiagnoseRoutes(controller, authenticate, limiters) {
     const router = express.Router();
 
     // GET /api/labels - Desteklenen etiket listesi (herkese açık)
     router.get('/labels', controller.getLabels);
 
     // POST /api/diagnose - Fotoğraf yükle ve AI tahmin al
-    // (Kimlik doğrulama, büyük dosya belleğe alınmadan önce yapılır)
-    router.post('/diagnose', authenticate, upload.single('image'), controller.diagnose);
+    // (Kimlik doğrulama ve kullanıcı başına sınır, büyük dosya belleğe alınmadan önce uygulanır)
+    router.post('/diagnose', authenticate, limiters.diagnose, upload.single('image'), controller.diagnose);
 
     // GET /api/history - Kullanıcının teşhis geçmişini listele
     router.get('/history', authenticate, controller.getHistory);

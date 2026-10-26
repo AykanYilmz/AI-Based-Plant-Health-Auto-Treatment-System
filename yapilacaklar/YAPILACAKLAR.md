@@ -31,11 +31,14 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
 
 ## 🟠 Yüksek — Sağlamlık ve Güvenlik Eksikleri
 
-- [ ] **7. Rate limit yok** — Login'e brute-force yapılabilir; `/api/diagnose` pahalı bir AI işlemi olduğu için DoS'a açık. (`express-rate-limit`)
-- [ ] **8. Şifre ve e-posta kuralları yok**
-  - Kayıtta 1 karakterlik şifre bile kabul ediliyor; e-posta formatı doğrulanmıyor.
-  - E-posta büyük/küçük harfe duyarlı (`Ali@x.com` ≠ `ali@x.com`) — kayıt ve girişte `toLowerCase().trim()` uygulanmalı.
-- [ ] **9. Güvenlik header'ları yok** — CORS tüm origin'lere açık, `helmet` kullanılmıyor.
+- [x] **7. Rate limit yok** — `backend/src/middlewares/rateLimiters.js`
+  - ✅ Çözüldü (`express-rate-limit`): genel API 300 istek / 15 dk (IP); başarısız giriş 10 deneme / 15 dk (IP + e-posta, başarılı girişler sayılmaz); diğer oturum işlemleri 30 / 15 dk (IP); AI teşhisi 10 / dk (kullanıcı). Aşılınca 429 + `Retry-After`. Proxy arkasında `TRUST_PROXY` ayarlanmalı.
+  - Not: Sayaçlar bellekte; birden fazla sunucu süreci çalıştırılırsa Redis gibi ortak bir depoya taşınmalı.
+- [x] **8. Şifre ve e-posta kuralları yok** — `backend/src/domain/CredentialPolicy.js`, `mobile_app/src/utils/credentialRules.js`
+  - ✅ Çözüldü: şifre 8–72 karakter, en az bir harf ve bir rakam; geçerli e-posta formatı (uzun uzantılar dahil, ör. `.online`); isim 2–50 karakter. E-posta kayıt/girişte küçük harfe çevrilip kırpılıyor, aramalar büyük/küçük harf duyarsız. Kurallar kayıt ve hesap yükseltmede uygulanır; girişte uygulanmaz (eski hesaplar girebilsin).
+  - Düzeltilen hata: mobildeki e-posta regex'i 4+ harfli uzantıları (`.info`, `.online`) reddediyordu.
+- [x] **9. Güvenlik header'ları yok** — `backend/src/index.js`
+  - ✅ Çözüldü: `helmet` (CSP, HSTS, nosniff, X-Frame-Options, `X-Powered-By` gizli). CORS yalnızca `CORS_ORIGINS` listesine (tanımlı değilse localhost'a) açık; mobil uygulama Origin göndermediği için etkilenmez. JSON gövde limiti 15 MB'tan 100 KB'a indirildi (aşılırsa 413).
 - [x] **10. Hata mesajları sızıyor** — ✅ Çözüldü: `AppError` hiyerarşisi + `middlewares/errorHandler.js`. Beklenen hatalar kendi mesajıyla, beklenmeyenler genel "Beklenmeyen bir sunucu hatası oluştu." mesajıyla döner; `detay` alanı kaldırıldı.
 - [ ] **11. HTTP kullanılıyor** — Şifreler ağda şifrelenmeden gidiyor; canlıya çıkmadan HTTPS şart.
 - [x] **12. DB bağlantı bayrağı takılı kalıyor** — `backend/src/config/db.js`
@@ -63,7 +66,7 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
 - [x] **19. Backend adresi koda gömülü** — `mobile_app/src/config.js`
   - IP her değiştiğinde dosya düzenlenip commit'leniyor; ekipte herkes birbirinin IP'sini eziyor.
   - ✅ Çözüldü: Adres artık otomatik — önce `EXPO_PUBLIC_API_URL`, yoksa Metro'nun çalıştığı bilgisayarın IP'si (`Constants.expoConfig.hostUri`), o da yoksa emülatör varsayılanı.
-- [ ] **20. Test kapsamı düşük** *(kısmen)* — ✅ 28 birim testi var (`DiagnosisService`, `AuthService`, `TokenService`, `authenticate`, `errorHandler`). Kalan: repository'ler için entegrasyon testi (gerçek PostgreSQL), `AiDaemonClient` ve Python pipeline (`pytest`) testleri, mobil testler.
+- [ ] **20. Test kapsamı düşük** *(kısmen)* — ✅ 47 birim testi var (`DiagnosisService`, `AuthService`, `TokenService`, `authenticate`, `CredentialPolicy`, `errorHandler`). Kalan: repository'ler için entegrasyon testi (gerçek PostgreSQL), `AiDaemonClient` ve Python pipeline (`pytest`) testleri, mobil testler.
 - [ ] **21. Lint hataları** *(kısmen)* — ✅ 24 → 12 sorun. Kalanlar (hepsi refactor öncesinden):
   - `useSwipeModal.js`: render sırasında ref okuma (8 hata) — `Animated` değerlerinin state'e/`useMemo`'ya taşınması gerekiyor
   - `ThemeContext.js`, `LoginScreen.js`, `DiagnosisDetailModal.js`: effect içinde senkron `setState`

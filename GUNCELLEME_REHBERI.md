@@ -65,6 +65,14 @@ DB_DATABASE=plant_health_db
 # Üretmek için: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 JWT_SECRET=buraya-uzun-rastgele-bir-deger
 ```
+İsteğe bağlı ayarlar:
+```env
+# Tarayıcıdan (Expo web vb.) erişebilecek origin'ler; tanımlı değilse yalnızca localhost
+CORS_ORIGINS=https://verdantai.com,https://admin.verdantai.com
+# Sunucu nginx gibi bir ters proxy arkasındaysa (rate limit gerçek istemci IP'sini görsün diye)
+TRUST_PROXY=1
+```
+
 > `JWT_SECRET` tanımlı değilse sunucu geliştirme ortamında geçici bir anahtar üretir; bu durumda sunucu her yeniden başladığında tüm oturumlar düşer. Canlı ortamda (`NODE_ENV=production`) tanımlı değilse sunucu başlamaz.
 
 ### 🔐 Oturum (JWT) Sistemi

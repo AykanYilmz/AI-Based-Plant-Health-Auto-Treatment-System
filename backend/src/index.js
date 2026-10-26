@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const createRateLimiters = require('./middlewares/rateLimiters');
 const logger = require('./utils/logger');
 const createDiagnoseRoutes = require('./routes/diagnoseRoutes');
 const createAuthRoutes = require('./routes/authRoutes');
@@ -18,20 +20,50 @@ const {
 const PORT = process.env.PORT || 3000;
 
 /**
+ * CORS yalnızca tarayıcıları ilgilendirir; mobil uygulama Origin göndermediği için her zaman geçer.
+ * Tarayıcıdan (Expo web) erişebilecek origin'ler CORS_ORIGINS ile virgülle ayrılarak verilir;
+ * tanımlı değilse geliştirme için yalnızca localhost origin'lerine izin verilir.
+ */
+function createCorsOptions() {
+    const allowed = (process.env.CORS_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+    const isLocalhost = (origin) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+    return {
+        origin: (origin, callback) => {
+            if (!origin || allowed.includes(origin) || (allowed.length === 0 && isLocalhost(origin))) {
+                return callback(null, true);
+            }
+            callback(null, false); // CORS header'ı eklenmez; tarayıcı yanıtı engeller
+        },
+    };
+}
+
+/**
  * Express uygulamasını oluşturur ve tüm middleware ile route'ları bağlar.
  */
 function createApp() {
     const app = express();
+    const limiters = createRateLimiters();
 
-    // ─── Middleware ──────────────────────────────────────────
-    app.use(cors());                         // Tüm origin'lerden erişime izin ver
-    app.use(express.json({ limit: '15mb' })); // JSON body parser (Base64 görseller için yüksek limit)
+    // Ters proxy (nginx vb.) arkasında gerçek istemci IP'sini görmek için (rate limit buna dayanır)
+    if (process.env.TRUST_PROXY) {
+        app.set('trust proxy', /^\d+$/.test(process.env.TRUST_PROXY) ? Number(process.env.TRUST_PROXY) : process.env.TRUST_PROXY);
+    }
+
+    // ─── Güvenlik Middleware ─────────────────────────────────
+    app.use(helmet({
+        // Görseller Expo web (farklı port) tarafından da yüklenebilsin
+        crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }));
+    app.use(cors(createCorsOptions()));
+    app.use(express.json({ limit: '100kb' })); // Yalnızca küçük JSON gövdeleri (görseller multipart ile gelir)
 
     // ─── Routes ─────────────────────────────────────────────
     // Not: Teşhis görselleri herkese açık statik klasörden değil, sahiplik kontrolü yapan
     // GET /api/images/:filename uç noktasından servis edilir.
-    app.use('/api/auth', createAuthRoutes(authController, authenticate));
-    app.use('/api', createDiagnoseRoutes(diagnoseController, authenticate));
+    app.use('/api', limiters.api);
+    app.use('/api/auth', createAuthRoutes(authController, authenticate, limiters));
+    app.use('/api', createDiagnoseRoutes(diagnoseController, authenticate, limiters));
 
     // ─── Sağlık Kontrolü (Fail-Safe Destekli) ────────────────
     app.get('/api/health', (req, res) => {

@@ -159,6 +159,9 @@ class DatabaseInitializer {
             );
         `);
         await this.#db.query('CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);');
+
+        // E-posta aramaları büyük/küçük harf duyarsız yapılır (LOWER(email))
+        await this.#db.query('CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email));');
     }
 
     /** Plants ve Diseases tablolarını PlantCatalog verileriyle doldurur. */

@@ -20,6 +20,11 @@ function errorHandler(err, req, res, next) {
         });
     }
 
+    // Çok büyük JSON gövdesi
+    if (err.type === 'entity.too.large') {
+        return res.status(413).json({ basarili: false, hata: 'İstek gövdesi çok büyük.' });
+    }
+
     // Bozuk JSON gövdesi
     if (err.type === 'entity.parse.failed') {
         return res.status(400).json({ basarili: false, hata: 'İstek gövdesi geçerli bir JSON değil.' });
