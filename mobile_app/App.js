@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { NavigationBar } from 'expo-navigation-bar';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Colors } from './src/theme/colors';
@@ -42,6 +43,8 @@ function AppContent() {
     return (
         <NavigationContainer theme={MyNavigationTheme}>
             <StatusBar style={colors.statusBar} backgroundColor={colors.background} />
+            {/* Android sistem navigasyon çubuğunu gizle (alttan kaydırınca geçici olarak görünür) */}
+            <NavigationBar hidden />
             <Stack.Navigator
                 screenOptions={{ headerShown: false }}
             >

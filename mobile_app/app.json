@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "mobileapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.batuhan.verdantai",
       "supportsTablet": true
@@ -20,7 +19,6 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -51,6 +49,13 @@
         "expo-image-picker",
         {
           "photosPermission": "VerdantAI, daha önce galerinizde kayıtlı olan bir bitki yaprağı fotoğrafını analiz edebilmek için fotoğraf kitaplığınıza erişim talep eder."
+        }
+      ],
+      "expo-video",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "VerdantAI, bulunduğunuz bölgenin canlı hava durumunu gösterebilmek için yaklaşık konumunuza erişim iznine ihtiyaç duyar."
         }
       ]
     ],

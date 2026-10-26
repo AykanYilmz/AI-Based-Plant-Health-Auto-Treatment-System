@@ -4,7 +4,6 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { Colors } from '../theme/colors';
@@ -19,6 +18,7 @@ import ActionIcon from '../components/myplants/ActionIcon';
 import PlantItem from '../components/myplants/PlantItem';
 import DiagnosisDetailModal from '../components/myplants/DiagnosisDetailModal';
 import DonationModal from '../components/myplants/DonationModal';
+import WeatherBackgroundVideo from '../components/myplants/WeatherBackgroundVideo';
 import CustomAlert from '../components/CustomAlert';
 
 export default function MyPlantsScreen({ navigation }) {
@@ -29,7 +29,10 @@ export default function MyPlantsScreen({ navigation }) {
     const styles = useMemo(() => getDynamicStyles(colors), [colors]);
 
     // Hava durumu (ayrı hook)
-    const { weather, city } = useWeather();
+    const {
+        weather, city,
+        needsLocationPermission, requestLocationPermission, declineLocationPermission,
+    } = useWeather();
 
     // Carousel
     const [activeCardIndex, setActiveCardIndex] = useState(0);
@@ -221,13 +224,10 @@ export default function MyPlantsScreen({ navigation }) {
                         <View style={[styles.card, { marginHorizontal: GAP / 2 }]}>
                             {weather && (
                                 <>
-                                    <Video
+                                    <WeatherBackgroundVideo
+                                        key={weather.videoUrl}
                                         source={weather.videoUrl}
                                         style={styles.weatherBgVideo}
-                                        resizeMode={ResizeMode.COVER}
-                                        shouldPlay
-                                        isLooping
-                                        isMuted
                                     />
                                     <View style={styles.weatherOverlay} />
                                 </>
@@ -372,6 +372,17 @@ export default function MyPlantsScreen({ navigation }) {
                 showCancel={customAlertConfig.showCancel}
                 onConfirm={customAlertConfig.onConfirm}
                 onCancel={() => setCustomAlertVisible(false)}
+            />
+
+            {/* KONUM İZNİ AÇIKLAMA MODALI (Sistem penceresinden önce gösterilir) */}
+            <CustomAlert
+                visible={needsLocationPermission}
+                title="Konum İzni"
+                message="Bulunduğunuz bölgenin canlı hava durumunu gösterebilmemiz için yaklaşık konumunuza erişmemiz gerekiyor. Konumunuz hiçbir yerde saklanmaz."
+                confirmText="İzin Ver"
+                cancelText="Şimdi Değil"
+                onConfirm={requestLocationPermission}
+                onCancel={declineLocationPermission}
             />
         </SafeAreaView>
     );

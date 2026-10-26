@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, Dimensions, Image, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, StatusBar, Dimensions, Image, Linking, ActivityIndicator, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,7 +22,7 @@ export default function CameraScreen({ navigation }) {
 
     const styles = useMemo(() => getDynamicStyles(colors), [colors]);
 
-    const [permission, requestPermission] = useCameraPermissions();
+    const [permission, requestPermission, getPermission] = useCameraPermissions();
     const [facing, setFacing] = useState('back');
     const [flash, setFlash] = useState('off');
     const [hasAsked, setHasAsked] = useState(false);
@@ -70,26 +70,23 @@ export default function CameraScreen({ navigation }) {
         };
     }, []);
 
-    // İzin isteme fonksiyonu - tek seferlik deneyin ardından Ayarlara Git moduna geç
+    // İzin isteme fonksiyonu - tek seferlik deneyin ardından doğrudan uygulama ayarlarını aç
     const handlePermissionRequest = useCallback(async () => {
         if (hasAsked || (permission && !permission.canAskAgain)) {
-            showCustomAlert(
-                "Kamera Erişimi Kapalı",
-                "Kamera iznini daha önce reddetmiş görünüyorsunuz. Bitkilerinizi tanıyabilmemiz için lütfen uygulama ayarlarından kamera erişimini açın.",
-                () => {
-                    setCustomAlertVisible(false);
-                    Linking.openSettings();
-                },
-                false,
-                "Ayarlara Git",
-                "Vazgeç",
-                true
-            );
+            Linking.openSettings();
         } else {
             setHasAsked(true);
             await requestPermission();
         }
     }, [hasAsked, permission, requestPermission]);
+
+    // Kullanıcı ayarlardan izin verip geri döndüğünde izin durumunu tazele
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (state) => {
+            if (state === 'active') getPermission();
+        });
+        return () => subscription.remove();
+    }, [getPermission]);
 
     const toggleCameraFacing = useCallback(() => {
         setFacing(current => (current === 'back' ? 'front' : 'back'));
@@ -294,54 +291,125 @@ export default function CameraScreen({ navigation }) {
         );
     }, [facing, flash]);
 
+    // Analiz Loading Overlay (kamera ve izin ekranı ortak kullanır; galeriden seçim izin gerektirmez)
+    const analyzingOverlay = isAnalyzing && (
+        <View style={styles.analyzingOverlay}>
+            <View style={styles.analyzingBox}>
+                <ActivityIndicator size="large" color={colors.accent} />
+                <Text style={styles.analyzingText}>Yapay Zeka Analizi Çalışıyor</Text>
+                <Text style={styles.analyzingSubText}>{analyzeStep || 'Analiz gerçekleştiriliyor...'}</Text>
+
+                {/* Yapay Zeka Adımları Göstergesi */}
+                <View style={styles.pipelineSteps}>
+                    <View style={styles.stepItem}>
+                        <MaterialCommunityIcons name="image-search-outline" size={18} color={colors.accent} />
+                        <Text style={styles.stepText}>Yaprak Algılama</Text>
+                    </View>
+                    <View style={styles.stepItem}>
+                        <MaterialCommunityIcons name="leaf" size={18} color={colors.accent} />
+                        <Text style={styles.stepText}>Bitki Türü Teşhisi</Text>
+                    </View>
+                    <View style={styles.stepItem}>
+                        <MaterialCommunityIcons name="alert-circle-outline" size={18} color={colors.accent} />
+                        <Text style={styles.stepText}>Hastalık Analizi</Text>
+                    </View>
+                </View>
+            </View>
+        </View>
+    );
+
+    // ÖZEL ONAY MODALI (galeri analizi hataları izin ekranında da gösterilebilsin)
+    const customAlert = (
+        <CustomAlert
+            visible={customAlertVisible}
+            title={customAlertConfig.title}
+            message={customAlertConfig.message}
+            confirmText={customAlertConfig.confirmText}
+            cancelText={customAlertConfig.cancelText}
+            isDestructive={customAlertConfig.isDestructive}
+            showCancel={customAlertConfig.showCancel}
+            onConfirm={customAlertConfig.onConfirm}
+            onCancel={() => setCustomAlertVisible(false)}
+        />
+    );
+
     // İzin henüz yüklenmedi
     if (!permission) {
         return <View style={styles.safeArea} />
     }
 
-    // İzin verilmedi - Güzel ve kullanışlı izin isteme ekranı
+    // İzin verilmedi - Uygulama temasında izin isteme ekranı
     if (!permission.granted) {
         const showSettingsMode = hasAsked || !permission.canAskAgain;
-        return (
-            <SafeAreaView style={styles.safeArea}>
-                <View style={styles.permissionContainer}>
-                    {/* Geri dön butonu */}
-                    <TouchableOpacity style={styles.permBackButton} onPress={() => navigation.goBack()}>
-                        <MaterialCommunityIcons name="arrow-left" size={28} color={colors.textMain} />
-                    </TouchableOpacity>
+        const benefits = [
+            { icon: 'image-search-outline', bg: colors.iconAnalyzeBg, color: colors.iconAnalyzeColor, title: 'Yaprağı otomatik bulur', text: 'Vizöre aldığınız bitkideki yaprak kendiliğinden tespit edilir.' },
+            { icon: 'leaf', bg: colors.iconWaterBg, color: colors.iconWaterColor, title: 'Türü ve hastalığı tanır', text: '3 katmanlı yapay zeka ile saniyeler içinde teşhis.' },
+            { icon: 'shield-check-outline', bg: colors.iconPauseBg, color: colors.iconPauseColor, title: 'Gizliliğiniz korunur', text: 'Kamera yalnızca bu ekranda, tarama için kullanılır.' },
+        ];
 
-                    <View style={[styles.iconBox, { backgroundColor: colors.iconAnalyzeBg }]}>
-                        <MaterialCommunityIcons
-                            name={showSettingsMode ? "cog-outline" : "camera-lock-outline"}
-                            size={54}
-                            color={colors.iconAnalyzeColor}
-                        />
+        return (
+            <View style={[styles.permScreen, { paddingTop: insets.top + 8, paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
+                {/* Geri dön butonu */}
+                <TouchableOpacity style={styles.permBackButton} onPress={() => navigation.goBack()}>
+                    <MaterialCommunityIcons name="arrow-left" size={24} color={colors.textMain} />
+                </TouchableOpacity>
+
+                <ScrollView contentContainerStyle={styles.permContent} showsVerticalScrollIndicator={false}>
+                    <View style={[styles.permIconRing, { backgroundColor: colors.iconAnalyzeBg }]}>
+                        <View style={[styles.permIconBox, { backgroundColor: colors.accent }]}>
+                            <MaterialCommunityIcons
+                                name={showSettingsMode ? 'camera-off-outline' : 'camera-outline'}
+                                size={40}
+                                color="#FFFFFF"
+                            />
+                        </View>
                     </View>
-                    <Text style={styles.permissionTitle}>
-                        {showSettingsMode ? "Kamera İzni Kapalı" : "Kamera İzni Gerekli"}
+
+                    <Text style={styles.permTitle}>
+                        {showSettingsMode ? 'Kamera İzni Kapalı' : 'Kamera İzni Gerekli'}
                     </Text>
-                    <Text style={styles.permissionText}>
+                    <Text style={styles.permText}>
                         {showSettingsMode
-                            ? "Kamera erişimi reddedilmiş görünüyor. Bitkilerinizi yapay zeka ile analiz edebilmemiz için lütfen uygulama ayarlarından kamera iznini aktif edin."
-                            : "Bitki türünüzü tanımak ve hastalıkları yapay zeka ile teşhis edebilmek için kameraya erişim iznine ihtiyaç duyuyoruz."
+                            ? 'Kamera erişimi reddedilmiş. Bitkilerinizi tarayabilmek için ayarlardan VerdantAI\'ın kamera iznini açın, sonra bu ekrana geri dönün.'
+                            : 'Bitkinizi tanıyıp hastalıklarını teşhis edebilmemiz için kameranıza erişmemiz gerekiyor.'
                         }
                     </Text>
-                    <TouchableOpacity
-                        style={[styles.permissionButton, { backgroundColor: colors.accent }]}
-                        onPress={handlePermissionRequest}
-                    >
-                        <MaterialCommunityIcons
-                            name={showSettingsMode ? "open-in-new" : "camera"}
-                            size={20}
-                            color="#FFFFFF"
-                            style={{ marginRight: 8 }}
-                        />
-                        <Text style={styles.permissionButtonText}>
-                            {showSettingsMode ? "Ayarlara Git" : "Kamerayı Aç"}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-            </SafeAreaView>
+
+                    <View style={styles.permCard}>
+                        {benefits.map((item, index) => (
+                            <View key={item.icon} style={[styles.permRow, index > 0 && styles.permRowDivider]}>
+                                <View style={[styles.permRowIcon, { backgroundColor: item.bg }]}>
+                                    <MaterialCommunityIcons name={item.icon} size={22} color={item.color} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.permRowTitle}>{item.title}</Text>
+                                    <Text style={styles.permRowText}>{item.text}</Text>
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                </ScrollView>
+
+                {/* Aksiyonlar */}
+                <TouchableOpacity style={styles.permPrimaryButton} onPress={handlePermissionRequest} activeOpacity={0.85}>
+                    <MaterialCommunityIcons
+                        name={showSettingsMode ? 'cog-outline' : 'camera'}
+                        size={20}
+                        color="#FFFFFF"
+                        style={{ marginRight: 8 }}
+                    />
+                    <Text style={styles.permPrimaryText}>
+                        {showSettingsMode ? 'Ayarlara Git' : 'Kameraya İzin Ver'}
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.permSecondaryButton} onPress={pickImage} activeOpacity={0.7}>
+                    <MaterialCommunityIcons name="image-outline" size={20} color={colors.textMain} style={{ marginRight: 8 }} />
+                    <Text style={styles.permSecondaryText}>Galeriden Fotoğraf Seç</Text>
+                </TouchableOpacity>
+
+                {analyzingOverlay}
+                {customAlert}
+            </View>
         );
     }
 
@@ -447,45 +515,8 @@ export default function CameraScreen({ navigation }) {
                 </View>
             </View>
 
-            {/* Analiz Loading Overlay */}
-            {isAnalyzing && (
-                <View style={styles.analyzingOverlay}>
-                    <View style={styles.analyzingBox}>
-                        <ActivityIndicator size="large" color={colors.accent} />
-                        <Text style={styles.analyzingText}>Yapay Zeka Analizi Çalışıyor</Text>
-                        <Text style={styles.analyzingSubText}>{analyzeStep || 'Analiz gerçekleştiriliyor...'}</Text>
-
-                        {/* Yapay Zeka Adımları Göstergesi */}
-                        <View style={styles.pipelineSteps}>
-                            <View style={styles.stepItem}>
-                                <MaterialCommunityIcons name="image-search-outline" size={18} color={colors.accent} />
-                                <Text style={styles.stepText}>Yaprak Algılama</Text>
-                            </View>
-                            <View style={styles.stepItem}>
-                                <MaterialCommunityIcons name="leaf" size={18} color={colors.accent} />
-                                <Text style={styles.stepText}>Bitki Türü Teşhisi</Text>
-                            </View>
-                            <View style={styles.stepItem}>
-                                <MaterialCommunityIcons name="alert-circle-outline" size={18} color={colors.accent} />
-                                <Text style={styles.stepText}>Hastalık Analizi</Text>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-            )}
-
-            {/* ÖZEL ONAY MODALI */}
-            <CustomAlert
-                visible={customAlertVisible}
-                title={customAlertConfig.title}
-                message={customAlertConfig.message}
-                confirmText={customAlertConfig.confirmText}
-                cancelText={customAlertConfig.cancelText}
-                isDestructive={customAlertConfig.isDestructive}
-                showCancel={customAlertConfig.showCancel}
-                onConfirm={customAlertConfig.onConfirm}
-                onCancel={() => setCustomAlertVisible(false)}
-            />
+            {analyzingOverlay}
+            {customAlert}
         </View>
     );
 }
@@ -629,22 +660,78 @@ const getDynamicStyles = (colors) => StyleSheet.create({
     },
 
     // İzin Sayfası Stilleri
-    permissionContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
+    // İzin Ekranı
+    permScreen: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 20 },
     permBackButton: {
-        position: 'absolute',
-        top: Platform.OS === 'ios' ? 16 : 24,
-        left: 20,
         width: 44,
         height: 44,
         borderRadius: 22,
+        backgroundColor: colors.card,
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        shadowColor: colors.shadowColor,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 1,
     },
-    iconBox: { width: 100, height: 100, borderRadius: 34, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
-    permissionTitle: { fontSize: 24, fontWeight: 'bold', color: colors.textMain, marginBottom: 12, textAlign: 'center', letterSpacing: -0.5 },
-    permissionText: { fontSize: 15, color: colors.textMuted, textAlign: 'center', lineHeight: 22, marginBottom: 40 },
-    permissionButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 36, borderRadius: 30 },
-    permissionButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
+    permContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 16 },
+    permIconRing: { width: 116, height: 116, borderRadius: 58, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+    permIconBox: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: colors.accent,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 8,
+    },
+    permTitle: { fontSize: 24, fontWeight: 'bold', color: colors.textMain, marginBottom: 10, textAlign: 'center', letterSpacing: -0.5 },
+    permText: { fontSize: 15, color: colors.textMuted, textAlign: 'center', lineHeight: 22, marginBottom: 28, paddingHorizontal: 8 },
+    permCard: {
+        width: '100%',
+        backgroundColor: colors.card,
+        borderRadius: 24,
+        paddingHorizontal: 16,
+        shadowColor: colors.shadowColor,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 15,
+        elevation: 5,
+    },
+    permRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
+    permRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navInactive },
+    permRowIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+    permRowTitle: { fontSize: 15, fontWeight: 'bold', color: colors.textMain },
+    permRowText: { fontSize: 13, fontWeight: '500', color: colors.textMuted, marginTop: 2, lineHeight: 18 },
+    permPrimaryButton: {
+        flexDirection: 'row',
+        height: 56,
+        borderRadius: 18,
+        backgroundColor: colors.accent,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: colors.accent,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    permPrimaryText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
+    permSecondaryButton: {
+        flexDirection: 'row',
+        height: 52,
+        borderRadius: 18,
+        marginTop: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: colors.navInactive,
+    },
+    permSecondaryText: { color: colors.textMain, fontSize: 15, fontWeight: '600' },
 
     // Analiz Overlay
     analyzingOverlay: {

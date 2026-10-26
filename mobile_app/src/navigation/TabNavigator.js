@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -30,7 +31,10 @@ export default function TabNavigator() {
     const isDark = theme === 'dark';
     const colors = isDark ? Colors.dark : Colors.light;
 
-    const styles = useMemo(() => getDynamicStyles(colors), [colors]);
+    // Edge-to-edge: sistem navigasyon çubuğu görünürse tab bar onun üstünde kalsın
+    const { bottom: bottomInset } = useSafeAreaInsets();
+
+    const styles = useMemo(() => getDynamicStyles(colors, bottomInset), [colors, bottomInset]);
 
     return (
         <Tab.Navigator
@@ -106,12 +110,12 @@ export default function TabNavigator() {
     );
 }
 
-const getDynamicStyles = (colors) => StyleSheet.create({
+const getDynamicStyles = (colors, bottomInset) => StyleSheet.create({
     tabBar: {
         backgroundColor: colors.card,
-        // iOS için o gereksiz devasa devasa siyah boşluğu kesiyoruz, Android'i kendi haline bırakıp hafif düzeltiyoruz
-        height: Platform.OS === 'ios' ? 70 : 65,  
-        paddingBottom: Platform.OS === 'ios' ? 20 : 5, 
+        // iOS için o gereksiz devasa devasa siyah boşluğu kesiyoruz, Android'de sistem çubuğu payını ekliyoruz
+        height: Platform.OS === 'ios' ? 70 : 65 + bottomInset,
+        paddingBottom: Platform.OS === 'ios' ? 20 : 5 + bottomInset,
         paddingTop: Platform.OS === 'ios' ? 10 : 5, 
         borderTopWidth: 0,
         borderTopRightRadius: 20, 
