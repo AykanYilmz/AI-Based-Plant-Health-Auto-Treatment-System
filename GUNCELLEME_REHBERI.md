@@ -73,7 +73,9 @@ DB_DATABASE=plant_health_db
 cd mobile_app
 npm install
 ```
-*Kritik paketler:* `expo-constants`, `expo-camera`, `expo-image-manipulator`, `expo-av`, `expo-location`, `nativewind`.
+*Kritik paketler:* `expo-constants`, `expo-camera`, `expo-image-manipulator`, `expo-video`, `expo-location`, `expo-navigation-bar`.
+
+> ⚠️ **Expo SDK 58:** Proje Expo SDK 58'e (React Native 0.88) yükseltildi. Telefonunuzdaki **Expo Go uygulamasının da SDK 58 sürümü** olmalıdır. Eski `expo-av` paketi kaldırıldı; hava durumu videoları artık `expo-video` ile oynatılıyor. Branch'i çektikten sonra `mobile_app` içinde mutlaka `npm install` çalıştırın.
 
 ### 🌐 IP Adresi Güncelleme (Manuel Yöntem)
 Fiziksel cihazda (Expo Go) test yaparken mobil uygulamanın bilgisayarınızda çalışan backend sunucusuna bağlanabilmesi için bilgisayarınızın yerel WiFi IP adresini elle tanımlamanız gerekmektedir. 
@@ -85,6 +87,11 @@ Fiziksel cihazda (Expo Go) test yaparken mobil uygulamanın bilgisayarınızda �
 export const API_BASE = 'http://192.168.1.3:3000'; // Bilgisayarınızın yerel IP adresi
 ```
 Bu sayede bilgisayarınızın IP adresi değiştiğinde sadece bu dosyadan güncelleyerek fiziksel cihazınızda testi sorunsuz bir şekilde sürdürebilirsiniz.
+
+Bilgisayarınızda Hamachi, VMware, WSL gibi birden fazla ağ adaptörü varsa Expo yanlış IP'yi seçebilir. Bu durumda Expo'yu IP'yi sabitleyerek başlatın (PowerShell):
+```powershell
+$env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.1.X"; npx expo start --lan
+```
 
 
 ---
@@ -112,4 +119,9 @@ Eski Node.js sürümlerindeki DNS çözümleme hatalarından kaynaklanır.
 
 ### ❌ PostgreSQL Bağlantı Hatası (Sunucu Başlangıcı)
 PostgreSQL servisi kapalıysa konsolda bağlantı denemeleri loglanır.
-*   **Çözüm:** Teşhis geçmişini kullanmak istiyorsanız yerel PostgreSQL servisinizin çalıştığından emin olun. Sadece anlık AI teşhisi yapmak istiyorsanız sunucu otomatik olarak **Çevrimdışı Mod**'da başlayacaktır, geliştirmeye devam edebilirsiniz.
+*   **Çözüm:** Teşhis geçmişini kullanmak istiyorsanız yerel PostgreSQL servisinizin çalıştığından emin olun. PostgreSQL kurulu değilse Docker ile çalıştırabilirsiniz:
+    ```bash
+    docker run -d --name verdant-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 --restart unless-stopped postgres:16-alpine
+    # Sonraki açılışlarda: docker start verdant-postgres
+    ```
+    Kayıt/giriş işlemleri veritabanı gerektirir. Sadece anlık AI teşhisi yapmak istiyorsanız sunucu otomatik olarak **Çevrimdışı Mod**'da başlayacaktır, geliştirmeye devam edebilirsiniz.
