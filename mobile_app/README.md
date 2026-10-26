@@ -1,50 +1,38 @@
-# Welcome to your Expo app 👋
+# VerdantAI — Mobil Uygulama
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Bitki yaprağı fotoğrafından bitki türünü ve hastalığı tespit edip tedavi önerisi sunan React Native (Expo SDK 58) uygulaması. Yapay zeka analizi `backend/` sunucusunda yapılır.
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Çalıştırma
 
 ```bash
-npm run reset-project
+npm install
+npx expo start --lan
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Telefonda **Expo Go (SDK 58)** ile QR kodu okutun. Telefon ve bilgisayar aynı ağda olmalı; backend adresi otomatik bulunur (bkz. `src/config.js`). Birden fazla ağ adaptörü olan bilgisayarlarda IP'yi sabitlemek için:
 
-## Learn more
+```powershell
+$env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.1.X"; npx expo start --lan
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+Kurulumun tamamı (backend, veritabanı, ortam değişkenleri) için kök dizindeki `GUNCELLEME_REHBERI.md` dosyasına bakın.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Klasör Yapısı
 
-## Join the community
+```text
+src/
+├── components/   Tekrar kullanılabilir arayüz bileşenleri (myplants/: ana sayfa bileşenleri)
+├── context/      AuthContext (oturum yönetimi)
+├── hooks/        useWeather, useCustomAlert, useSwipeModal
+├── navigation/   Alt sekme menüsü (TabNavigator)
+├── screens/      Ekranlar
+├── services/     ApiClient (tüm backend istekleri), SessionStore (güvenli oturum deposu)
+├── styles/       Ekran stilleri
+├── theme/        Renk paleti ve tema (açık/koyu)
+├── utils/        Kimlik bilgisi kuralları, teşhis durumu yardımcıları
+└── config.js     Backend adresi
+```
 
-Join our community of developers creating universal apps.
+## Canlı Sürüm
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Canlı (release) derlemede `EXPO_PUBLIC_API_URL` tanımlı olmalı ve `https://` ile başlamalıdır (ör. `.env.local` içinde `EXPO_PUBLIC_API_URL=https://api.alanadiniz.com`).

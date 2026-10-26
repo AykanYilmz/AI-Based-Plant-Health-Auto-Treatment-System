@@ -59,12 +59,10 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
 ## 🟡 Orta — Kod Kalitesi ve Bakım
 
 - [ ] **16. Mimari plan ile gerçek kod uyuşmuyor** — Plan "cihaz üzerinde TFLite, çevrimdışı (Edge AI)" diyordu; şu an teşhis tamamen sunucuda yapılıyor ve internetsiz çalışmıyor. Karar verilmeli: plan güncellensin ya da edge AI'a geçilsin.
-- [ ] **17. Ölü kod ve dosyalar**
-  - `backend/src/services/predict.py` (eski tek katmanlı pipeline)
-  - `backend/src/model/` ve `ai_model/egitilmis_model/` (eski `.tflite` model)
-  - `ai_model/active_models/plant_mobilenetv3large_best.h5` (`.keras` kopyası)
-  - Expo şablonundan kalanlar: `mobile_app/components/`, `mobile_app/hooks/`, `mobile_app/constants/`, `scripts/reset-project.js`, `src/screens/HomeScreen.js` (kullanılmıyor)
-  - Kullanılmayan paketler: `expo-router`, `nativewind`, `tailwindcss`
+- [x] **17. Ölü kod ve dosyalar**
+  - ✅ Silindi: `backend/src/services/predict.py` (eski pipeline), `backend/src/model/` ve `ai_model/egitilmis_model/` (eski `.tflite`), `plant_mobilenetv3large_best.h5` (`.keras` kopyası), Expo şablonundan kalan `mobile_app/components/`, `hooks/`, `constants/`, `scripts/reset-project.js`, `src/screens/HomeScreen.js`, `tailwind.config.js` ve kullanılmayan React logoları.
+  - ✅ Kaldırılan paketler: `expo-router`, `nativewind`, `tailwindcss`, `expo-haptics`, `expo-symbols`, `expo-web-browser`, `expo-image`, `expo-linking`, `@react-navigation/elements`. `expo-router`a bağlı `typedRoutes` ayarı kaldırıldı, web çıktısı `single` yapıldı. Şablon README projeye özel README ile değiştirildi.
+  - Kalan: `react-native-reanimated` / `react-native-worklets` uygulamada kullanılmıyor ama babel ayarına bağlı; kaldırılırsa `babel.config.js` de güncellenmeli.
 - [ ] **18. Git'te olmaması gereken dosyalar**
   - `backend/logs/app.log` (takipten çıkarılıp `.gitignore`'a eklenmeli)
   - `.idea/` (IDE ayarları)
@@ -73,10 +71,9 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
   - IP her değiştiğinde dosya düzenlenip commit'leniyor; ekipte herkes birbirinin IP'sini eziyor.
   - ✅ Çözüldü: Adres artık otomatik — önce `EXPO_PUBLIC_API_URL`, yoksa Metro'nun çalıştığı bilgisayarın IP'si (`Constants.expoConfig.hostUri`), o da yoksa emülatör varsayılanı.
 - [ ] **20. Test kapsamı düşük** *(kısmen)* — ✅ 48 birim testi var (`DiagnosisService`, `AuthService`, `TokenService`, `authenticate`, `CredentialPolicy`, `errorHandler`). Kalan: repository'ler için entegrasyon testi (gerçek PostgreSQL), `AiDaemonClient` ve Python pipeline (`pytest`) testleri, mobil testler.
-- [ ] **21. Lint hataları** *(kısmen)* — ✅ 24 → 12 sorun. Kalanlar (hepsi refactor öncesinden):
+- [ ] **21. Lint hataları** *(kısmen)* — ✅ 24 → 11 sorun. Kalanlar (hepsi refactor öncesinden):
   - `useSwipeModal.js`: render sırasında ref okuma (8 hata) — `Animated` değerlerinin state'e/`useMemo`'ya taşınması gerekiyor
   - `ThemeContext.js`, `LoginScreen.js`, `DiagnosisDetailModal.js`: effect içinde senkron `setState`
-  - `HomeScreen.js`: kullanılmayan `Image` (ekranın kendisi de kullanılmıyor, bkz. 17)
 - [ ] **22. Deprecated `SafeAreaView`** — 6 ekran `react-native`'in `SafeAreaView`'ini kullanıyor (ileride kaldırılacak); `react-native-safe-area-context`'e geçilmeli.
 - [ ] **23. Bağımlılık açıkları** — `npm audit` mobil tarafta 16 açık gösteriyor (1 kritik, 9 yüksek).
 - [ ] **24. Tasarım kuralına aykırı sabit renkler** — Bazı stillerde `'#888'`, `'#1C1C1E'`, `'#1A1A1A'` gibi sabit hex renkler var; `src/theme/colors.js`'ten beslenmeli.
