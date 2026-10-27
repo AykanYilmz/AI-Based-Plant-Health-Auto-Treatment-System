@@ -92,6 +92,8 @@ Canlı ortamda (`NODE_ENV=production`) backend şifrelenmemiş HTTP isteklerini 
 Mobil uygulamanın **canlı (release) sürümü**, `EXPO_PUBLIC_API_URL` tanımlı değilse veya `https://` ile başlamıyorsa açılışta hata verir. Geliştirmede (Expo Go) bu kontrol devre dışıdır.
 
 ### 🧪 Testler
+Mobil (`mobile_app`): `npm test` — kimlik kuralları, teşhis durumu ve ApiClient token yenileme testleri.
+
 `backend` klasöründe:
 ```bash
 npm test                  # Birim testleri (veritabanı gerekmez)
