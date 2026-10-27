@@ -148,8 +148,8 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         shadowColor: colors.accent,
     },
     confirmDestructive: {
-        backgroundColor: '#FF3B30',
-        shadowColor: '#FF3B30',
+        backgroundColor: colors.danger,
+        shadowColor: colors.danger,
     },
     confirmText: {
         fontSize: 14,

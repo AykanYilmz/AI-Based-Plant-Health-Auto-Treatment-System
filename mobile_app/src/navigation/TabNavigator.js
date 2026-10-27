@@ -118,7 +118,7 @@ const getDynamicStyles = (colors, bottomInset) => StyleSheet.create({
         borderTopLeftRadius: 20,
         shadowColor: colors.shadowColor,
         shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: colors.background === '#121212' ? 0.3 : 0.05, // Daha belirgin karanlık gölge
+        shadowOpacity: colors.cardShadowOpacity, // Daha belirgin karanlık gölge
         shadowRadius: 10,
         elevation: 10, 
     },

@@ -190,7 +190,7 @@ export default function SearchScreen() {
                         style={styles.deleteButton} 
                         onPress={() => handleDelete(item.id)}
                     >
-                        <MaterialCommunityIcons name="trash-can-outline" size={24} color="#FF3B30" />
+                        <MaterialCommunityIcons name="trash-can-outline" size={24} color={colors.danger} />
                     </TouchableOpacity>
                 </View>
             </TouchableOpacity>
@@ -288,7 +288,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
         alignItems: 'center',
     },
     deleteAllText: {
-        color: '#FF3B30',
+        color: colors.danger,
         fontSize: 13,
         fontWeight: 'bold',
     },
@@ -350,7 +350,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
         marginBottom: 14,
         shadowColor: colors.shadowColor,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: colors.background === '#121212' ? 0.3 : 0.05,
+        shadowOpacity: colors.cardShadowOpacity,
         shadowRadius: 8,
         elevation: 3,
     },

@@ -142,7 +142,7 @@ export default function MyPlantsScreen({ navigation }) {
                 {/* ── HEADER ──────────────────────────────── */}
                 <View style={[styles.paddedSection, styles.header]}>
                     <View style={styles.headerLogoContainer}>
-                        <MaterialCommunityIcons name="leaf" size={26} color="#2ECC71" style={{ marginRight: 6 }} />
+                        <MaterialCommunityIcons name="leaf" size={26} color={colors.brand} style={{ marginRight: 6 }} />
                         <Text style={styles.headerTitleMain}>
                             Verdant<Text style={styles.headerTitleAI}>AI</Text>
                         </Text>
@@ -246,7 +246,7 @@ export default function MyPlantsScreen({ navigation }) {
                 {/* ── AKSİYON BUTONLARI & BİTKİ LİSTESİ ─── */}
                 <View style={styles.paddedSection}>
                     <View style={styles.actionsRow}>
-                        <ActionIcon icon="tree"                    color="#2ECC71" bg="rgba(46, 204, 113, 0.1)"  label={"Fidan\nBağışı"}    styles={styles} onPress={() => setDonationVisible(true)} />
+                        <ActionIcon icon="tree"                    color={colors.brand} bg="rgba(46, 204, 113, 0.1)"  label={"Fidan\nBağışı"}    styles={styles} onPress={() => setDonationVisible(true)} />
                         <ActionIcon icon="water-pump"              color="#3498DB" bg="rgba(52, 152, 219, 0.1)"  label={"Akıllı\nSulama"}   styles={styles} onPress={handleSmartIrrigation} />
                         <ActionIcon icon="book-open-page-variant"  color="#F39C12" bg="rgba(243, 156, 18, 0.1)"  label={"Bitki\nRehberi"}   styles={styles} onPress={handlePlantGuide} />
                         <ActionIcon icon="robot-concept"           color="#9B59B6" bg="rgba(155, 89, 182, 0.1)"  label={"AI\nBotanist"}     styles={styles} onPress={handleAIBotanist} />

@@ -1,7 +1,12 @@
+import { Colors } from '../theme/colors';
+
+// Durum renkleri her iki temada aynıdır (theme/colors.js → SHARED)
+const { success, danger, warning } = Colors.light;
+
 const STATUS_STYLES = {
-    healthy: { color: '#34C759', bg: 'rgba(52, 199, 89, 0.1)' },
-    disease: { color: '#FF3B30', bg: 'rgba(255, 59, 48, 0.1)' },
-    uncertain: { color: '#FF9500', bg: 'rgba(255, 149, 0, 0.1)' },
+    healthy: { color: success, bg: 'rgba(52, 199, 89, 0.1)' },
+    disease: { color: danger, bg: 'rgba(255, 59, 48, 0.1)' },
+    uncertain: { color: warning, bg: 'rgba(255, 149, 0, 0.1)' },
 };
 
 /**

@@ -169,7 +169,7 @@ export default function MenuScreen() {
 
                 {/* ── ÇIKIŞ YAP ───────────────────────────── */}
                 <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
-                    <MaterialCommunityIcons name="logout-variant" size={22} color="#E74C3C" style={styles.logoutIcon} />
+                    <MaterialCommunityIcons name="logout-variant" size={22} color={colors.alert} style={styles.logoutIcon} />
                     <Text style={styles.logoutText}>Oturumu Kapat</Text>
                 </TouchableOpacity>
 
@@ -196,7 +196,7 @@ export default function MenuScreen() {
 
                         {!!errorMsg && (
                             <View style={styles.errorContainer}>
-                                <MaterialCommunityIcons name="alert-circle-outline" size={18} color="#E74C3C" />
+                                <MaterialCommunityIcons name="alert-circle-outline" size={18} color={colors.alert} />
                                 <Text style={styles.errorText}>{errorMsg}</Text>
                             </View>
                         )}
@@ -328,11 +328,11 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         width: 70,
         height: 70,
         borderRadius: 35,
-        backgroundColor: '#648754',
+        backgroundColor: colors.accent,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
-        shadowColor: '#648754',
+        shadowColor: colors.accent,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 6,
@@ -372,7 +372,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
     badgeText: {
         fontSize: 10,
         fontWeight: '800',
-        color: isDark ? '#FFF' : '#333',
+        color: colors.textMain,
         letterSpacing: 0.5,
     },
     upgradeBanner: {
@@ -401,14 +401,14 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         marginBottom: 16,
     },
     upgradeButton: {
-        backgroundColor: '#648754',
+        backgroundColor: colors.accent,
         paddingVertical: 12,
         paddingHorizontal: 16,
         borderRadius: 12,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#648754',
+        shadowColor: colors.accent,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 6,
@@ -478,7 +478,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         marginRight: 8,
     },
     logoutText: {
-        color: '#E74C3C',
+        color: colors.alert,
         fontSize: 15,
         fontWeight: '700',
     },
@@ -523,7 +523,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         marginBottom: 16,
     },
     errorText: {
-        color: '#E74C3C',
+        color: colors.alert,
         fontSize: 13,
         fontWeight: '500',
         marginLeft: 8,
@@ -560,7 +560,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         padding: 4,
     },
     modalSubmitButton: {
-        backgroundColor: '#648754',
+        backgroundColor: colors.accent,
         height: 50,
         borderRadius: 12,
         flexDirection: 'row',
@@ -568,7 +568,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         alignItems: 'center',
         marginTop: 20,
         marginBottom: 10,
-        shadowColor: '#648754',
+        shadowColor: colors.accent,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 6,

@@ -144,7 +144,7 @@ export default function LoginScreen() {
                     {/* Hata Mesajı */}
                     {!!errorMsg && (
                         <View style={styles.errorContainer}>
-                            <MaterialCommunityIcons name="alert-circle-outline" size={20} color="#E74C3C" />
+                            <MaterialCommunityIcons name="alert-circle-outline" size={20} color={colors.alert} />
                             <Text style={styles.errorText}>{errorMsg}</Text>
                         </View>
                     )}
@@ -392,11 +392,11 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#648754',
+        backgroundColor: colors.accent,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 12,
-        shadowColor: '#648754',
+        shadowColor: colors.accent,
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: isDark ? 0.4 : 0.2,
         shadowRadius: 10,
@@ -409,7 +409,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         letterSpacing: 0.5,
     },
     titleGreen: {
-        color: '#2ECC71',
+        color: colors.brand,
     },
     subtitle: {
         fontSize: 14,
@@ -430,7 +430,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         marginBottom: 16,
     },
     errorText: {
-        color: '#E74C3C',
+        color: colors.alert,
         fontSize: 14,
         fontWeight: '500',
         marginLeft: 8,

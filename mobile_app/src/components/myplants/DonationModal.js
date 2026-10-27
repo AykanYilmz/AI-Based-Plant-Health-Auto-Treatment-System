@@ -76,7 +76,7 @@ export default function DonationModal({ visible, onClose, styles, colors }) {
                             <>
                                 {/* Kampanya Banner */}
                                 <View style={styles.donationBannerPremium}>
-                                    <MaterialCommunityIcons name="sprout" size={48} color="#2ECC71" style={{ marginBottom: 12 }} />
+                                    <MaterialCommunityIcons name="sprout" size={48} color={colors.brand} style={{ marginBottom: 12 }} />
                                     <Text style={styles.donationBannerTitlePremium}>VerdantAI Fidan Fonu</Text>
                                     <Text style={styles.donationBannerTextPremium}>
                                         Sistemimizle bitkilerinizi iyileştirdiniz. Şimdi doğaya bir fidan armağan ederek VerdantAI otonom yeşillendirme projelerine doğrudan destek olun!
@@ -215,14 +215,14 @@ export default function DonationModal({ visible, onClose, styles, colors }) {
                                 <Text style={styles.successSubTitlePremium}>Doğamıza Can Verdiniz</Text>
 
                                 <View style={styles.certificateSummaryCardPremium}>
-                                    <MaterialCommunityIcons name="decagram-outline" size={32} color="#2ECC71" style={{ marginBottom: 12 }} />
+                                    <MaterialCommunityIcons name="decagram-outline" size={32} color={colors.brand} style={{ marginBottom: 12 }} />
                                     <Text style={styles.certSummaryLabelPremium}>DİJİTAL SERTİFİKA</Text>
                                     <Text style={styles.certSummaryNamePremium}>{donationName}</Text>
                                     <View style={styles.dividerPremium} />
                                     <Text style={styles.certSummaryDetailsPremium}>{saplingCount} Adet Fidan Bağışı</Text>
                                     <Text style={styles.certSummarySubDetailsPremium}>VerdantAI Fidan Fonu</Text>
                                     <View style={styles.certPaymentBadgePremium}>
-                                        <MaterialCommunityIcons name="check-circle" size={14} color="#2ECC71" style={{ marginRight: 6 }} />
+                                        <MaterialCommunityIcons name="check-circle" size={14} color={colors.brand} style={{ marginRight: 6 }} />
                                         <Text style={styles.certPaymentBadgeTextPremium}>Ödenen Tutar: {saplingCount * 50} TL</Text>
                                     </View>
                                 </View>

@@ -79,20 +79,20 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                 {/* Yaprak Tespiti Kartı */}
                 <View style={styles.pipelineCard}>
                     <View style={styles.pipelineHeader}>
-                        <View style={[styles.pipelineIconBox, { backgroundColor: '#34C75920' }]}>  
-                            <MaterialCommunityIcons name="image-search-outline" size={22} color="#34C759" />
+                        <View style={[styles.pipelineIconBox, { backgroundColor: colors.successSoft }]}>  
+                            <MaterialCommunityIcons name="image-search-outline" size={22} color={colors.success} />
                         </View>
                         <View style={styles.pipelineHeaderText}>
                             <Text style={styles.pipelineTitle}>Yaprak Algılama</Text>
                             <Text style={styles.pipelineSubtitle}>Görsel üzerindeki yaprak taranıyor</Text>
                         </View>
-                        <View style={[styles.statusBadge, { backgroundColor: k1.tespit_edildi ? '#34C75920' : '#FF3B3020' }]}>
+                        <View style={[styles.statusBadge, { backgroundColor: k1.tespit_edildi ? colors.successSoft : colors.dangerSoft }]}>
                             <MaterialCommunityIcons 
                                 name={k1.tespit_edildi ? "check-circle" : "close-circle"} 
                                 size={16} 
-                                color={k1.tespit_edildi ? '#34C759' : '#FF3B30'} 
+                                color={k1.tespit_edildi ? colors.success : colors.danger} 
                             />
-                            <Text style={[styles.statusBadgeText, { color: k1.tespit_edildi ? '#34C759' : '#FF3B30' }]}>
+                            <Text style={[styles.statusBadgeText, { color: k1.tespit_edildi ? colors.success : colors.danger }]}>
                                 {k1.tespit_edildi ? 'Başarılı' : 'Bulunamadı'}
                             </Text>
                         </View>
@@ -110,8 +110,8 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                 {/* Bitki Türü Kartı */}
                 <View style={styles.pipelineCard}>
                     <View style={styles.pipelineHeader}>
-                        <View style={[styles.pipelineIconBox, { backgroundColor: '#007AFF20' }]}>
-                            <MaterialCommunityIcons name="leaf" size={22} color="#007AFF" />
+                        <View style={[styles.pipelineIconBox, { backgroundColor: colors.infoSoft }]}>
+                            <MaterialCommunityIcons name="leaf" size={22} color={colors.info} />
                         </View>
                         <View style={styles.pipelineHeaderText}>
                             <Text style={styles.pipelineTitle}>Bitki Türü</Text>
@@ -126,7 +126,7 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                         <View style={styles.confidenceTrack}>
                             <View style={[styles.confidenceFill, { 
                                 width: `${Math.min(k2.confidence || 0, 100)}%`,
-                                backgroundColor: (k2.confidence || 0) > 80 ? '#34C759' : (k2.confidence || 0) > 60 ? '#FF9500' : '#FF3B30'
+                                backgroundColor: (k2.confidence || 0) > 80 ? colors.success : (k2.confidence || 0) > 60 ? colors.warning : colors.danger
                             }]} />
                         </View>
                         <Text style={styles.confidenceText}>%{k2.confidence || 0}</Text>
@@ -138,8 +138,8 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                     <View style={styles.pipelineHeader}>
                         <View style={[styles.pipelineIconBox, { backgroundColor: 
                             k3.durum === 'tespit_edildi' 
-                                ? (k3.saglikli ? '#34C75920' : '#FF3B3020')
-                                : '#FF950020' 
+                                ? (k3.saglikli ? colors.successSoft : colors.dangerSoft)
+                                : colors.warningSoft 
                         }]}>
                             <MaterialCommunityIcons 
                                 name={
@@ -150,8 +150,8 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                                 size={22} 
                                 color={
                                     k3.durum === 'tespit_edildi'
-                                        ? (k3.saglikli ? '#34C759' : '#FF3B30')
-                                        : '#FF9500'
+                                        ? (k3.saglikli ? colors.success : colors.danger)
+                                        : colors.warning
                                 } 
                             />
                         </View>
@@ -160,21 +160,21 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                             <Text style={styles.pipelineSubtitle}>Yapay zeka yaprak sağlığını inceliyor</Text>
                         </View>
                         {k3.durum === 'tespit_edildi' && (
-                            <View style={[styles.statusBadge, { backgroundColor: k3.saglikli ? '#34C75920' : '#FF3B3020' }]}>
+                            <View style={[styles.statusBadge, { backgroundColor: k3.saglikli ? colors.successSoft : colors.dangerSoft }]}>
                                 <MaterialCommunityIcons 
                                     name={k3.saglikli ? "check-circle" : "alert-circle"} 
                                     size={16} 
-                                    color={k3.saglikli ? '#34C759' : '#FF3B30'} 
+                                    color={k3.saglikli ? colors.success : colors.danger} 
                                 />
-                                <Text style={[styles.statusBadgeText, { color: k3.saglikli ? '#34C759' : '#FF3B30' }]}>
+                                <Text style={[styles.statusBadgeText, { color: k3.saglikli ? colors.success : colors.danger }]}>
                                     {k3.saglikli ? 'Sağlıklı' : 'Hastalık'}
                                 </Text>
                             </View>
                         )}
                         {k3.durum === 'belirsiz' && (
-                            <View style={[styles.statusBadge, { backgroundColor: '#FF950020' }]}>
-                                <MaterialCommunityIcons name="help-circle" size={16} color="#FF9500" />
-                                <Text style={[styles.statusBadgeText, { color: '#FF9500' }]}>Belirsiz</Text>
+                            <View style={[styles.statusBadge, { backgroundColor: colors.warningSoft }]}>
+                                <MaterialCommunityIcons name="help-circle" size={16} color={colors.warning} />
+                                <Text style={[styles.statusBadgeText, { color: colors.warning }]}>Belirsiz</Text>
                             </View>
                         )}
                     </View>
@@ -182,7 +182,7 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                     {k3.durum === 'tespit_edildi' ? (
                         <View>
                             <View style={styles.bitkiSonuc}>
-                                <Text style={[styles.bitkiAdi, { color: k3.saglikli ? '#34C759' : '#FF3B30' }]}>
+                                <Text style={[styles.bitkiAdi, { color: k3.saglikli ? colors.success : colors.danger }]}>
                                     {k3.hastalik_tr || 'Bilinmiyor'}
                                 </Text>
                             </View>
@@ -191,7 +191,7 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                                     <View style={styles.confidenceTrack}>
                                         <View style={[styles.confidenceFill, { 
                                             width: `${Math.min(k3.confidence || 0, 100)}%`,
-                                            backgroundColor: k3.saglikli ? '#34C759' : '#FF3B30'
+                                            backgroundColor: k3.saglikli ? colors.success : colors.danger
                                         }]} />
                                     </View>
                                     <Text style={styles.confidenceText}>%{k3.confidence}</Text>
@@ -199,7 +199,7 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                             )}
                             {k3.dusuk_confidence && (
                                 <View style={styles.warningBox}>
-                                    <MaterialCommunityIcons name="alert-outline" size={16} color="#FF9500" />
+                                    <MaterialCommunityIcons name="alert-outline" size={16} color={colors.warning} />
                                     <Text style={styles.warningText}>
                                         Düşük güven oranı — sonuç kesin olmayabilir
                                     </Text>
@@ -209,7 +209,7 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                     ) : k3.durum === 'belirsiz' ? (
                         <View>
                             <View style={styles.comingSoonBox}>
-                                <MaterialCommunityIcons name="help-circle-outline" size={32} color="#FF9500" />
+                                <MaterialCommunityIcons name="help-circle-outline" size={32} color={colors.warning} />
                                 <Text style={styles.comingSoonText}>
                                     {k3.mesaj || 'Hastalık teşhisi kesin değil. Yaprağı daha yakından ve net çekip tekrar deneyin.'}
                                 </Text>
@@ -228,14 +228,14 @@ export default function DiagnosisResultScreen({ route, navigation }) {
                         </View>
                     ) : k3.durum === 'model_yok' ? (
                         <View style={styles.comingSoonBox}>
-                            <MaterialCommunityIcons name="information-outline" size={32} color="#FF9500" />
+                            <MaterialCommunityIcons name="information-outline" size={32} color={colors.warning} />
                             <Text style={styles.comingSoonText}>
                                 {k3.mesaj || 'Bu bitki türü için henüz hastalık modeli bulunmuyor.'}
                             </Text>
                         </View>
                     ) : (
                         <View style={styles.comingSoonBox}>
-                            <MaterialCommunityIcons name="alert-circle-outline" size={32} color="#FF3B30" />
+                            <MaterialCommunityIcons name="alert-circle-outline" size={32} color={colors.danger} />
                             <Text style={styles.comingSoonText}>
                                 {k3.mesaj || 'Hastalık tespiti sırasında bir hata oluştu.'}
                             </Text>
@@ -289,7 +289,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0',
+        backgroundColor: colors.surfaceMuted,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -315,7 +315,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
 
     // Pipeline Kart Stilleri
     pipelineCard: {
-        backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+        backgroundColor: colors.card,
         borderRadius: 20,
         padding: 20,
         marginBottom: 12,
@@ -328,7 +328,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
     pipelineCardInactive: {
         opacity: 0.7,
         borderWidth: 1,
-        borderColor: isDark ? '#333' : '#E5E5EA',
+        borderColor: colors.border,
         borderStyle: 'dashed',
     },
     pipelineHeader: {
@@ -375,7 +375,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
     pipelineDetails: {
         marginTop: 16,
         borderTopWidth: 1,
-        borderTopColor: isDark ? '#333' : '#F0F0F0',
+        borderTopColor: colors.divider,
         paddingTop: 12,
     },
     detailRow: {
@@ -399,7 +399,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         marginTop: 16,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: isDark ? '#333' : '#F0F0F0',
+        borderTopColor: colors.divider,
         alignItems: 'center',
     },
     bitkiAdi: {
@@ -425,7 +425,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
     confidenceTrack: {
         flex: 1,
         height: 8,
-        backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0',
+        backgroundColor: colors.surfaceMuted,
         borderRadius: 4,
         overflow: 'hidden',
     },
@@ -446,7 +446,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         marginTop: 16,
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: isDark ? '#333' : '#F0F0F0',
+        borderTopColor: colors.divider,
         gap: 10,
     },
     top3Row: {
@@ -483,7 +483,7 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         marginTop: 16,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: isDark ? '#333' : '#F0F0F0',
+        borderTopColor: colors.divider,
         alignItems: 'center',
         paddingVertical: 20,
     },
@@ -501,14 +501,14 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         alignItems: 'center',
         marginTop: 12,
         padding: 10,
-        backgroundColor: isDark ? '#3A2A0020' : '#FFF3E0',
+        backgroundColor: colors.warningBanner,
         borderRadius: 10,
         gap: 8,
     },
     warningText: {
         flex: 1,
         fontSize: 12,
-        color: '#FF9500',
+        color: colors.warning,
         lineHeight: 16,
     },
 

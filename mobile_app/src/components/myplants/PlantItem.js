@@ -26,13 +26,13 @@ export default function PlantItem({ name, status, imageSource, needs, styles, co
 
                 <View style={styles.plantNeedsRow}>
                     {needs.length === 0 ? (
-                        <View style={[styles.needIconCircle, { borderColor: '#2ECC71', backgroundColor: 'rgba(46, 204, 113, 0.1)' }]}>
-                            <MaterialCommunityIcons name="check" size={18} color="#2ECC71" />
+                        <View style={[styles.needIconCircle, { borderColor: colors.brand, backgroundColor: 'rgba(46, 204, 113, 0.1)' }]}>
+                            <MaterialCommunityIcons name="check" size={18} color={colors.brand} />
                         </View>
                     ) : null}
                     {needs.includes('water') && (
-                        <View style={[styles.needIconCircle, { borderColor: '#E74C3C', backgroundColor: 'rgba(231, 76, 60, 0.1)' }]}>
-                            <MaterialCommunityIcons name="water" size={18} color="#E74C3C" />
+                        <View style={[styles.needIconCircle, { borderColor: colors.alert, backgroundColor: 'rgba(231, 76, 60, 0.1)' }]}>
+                            <MaterialCommunityIcons name="water" size={18} color={colors.alert} />
                         </View>
                     )}
                     {needs.includes('fertilizer') && (

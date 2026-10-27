@@ -14,7 +14,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 
 export default function CameraScreen({ navigation }) {
-    const { isDark, colors } = useTheme();
+    const { colors } = useTheme();
 
     const styles = useMemo(() => getDynamicStyles(colors), [colors]);
 
@@ -384,7 +384,7 @@ export default function CameraScreen({ navigation }) {
 
                     {/* Alt Menü */}
                     <View style={[styles.drawerContainer, {
-                        backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                        backgroundColor: colors.card,
                         paddingBottom: Math.max(insets.bottom + 10, 30)
                     }]}>
                         {/* Pipeline Bilgi Bandı */}
@@ -410,14 +410,14 @@ export default function CameraScreen({ navigation }) {
                             {/* Galeri Tuşu */}
                             <TouchableOpacity style={styles.actionSideItem} onPress={pickImage}>
                                 <View style={styles.actionSubCircle}>
-                                    <MaterialCommunityIcons name="image-outline" size={24} color={isDark ? '#FFF' : '#1A1A1A'} />
+                                    <MaterialCommunityIcons name="image-outline" size={24} color={colors.textMain} />
                                 </View>
-                                <Text style={[styles.actionSubText, { color: isDark ? '#A1A1AA' : '#8E8E93' }]}>Galeri</Text>
+                                <Text style={[styles.actionSubText, { color: colors.textMuted }]}>Galeri</Text>
                             </TouchableOpacity>
 
                             {/* Beyaz Dev Deklanşör */}
                             <TouchableOpacity
-                                style={[styles.shutterOuter, { borderColor: isDark ? '#A1A1AA' : '#E5E5EA' }]}
+                                style={[styles.shutterOuter, { borderColor: colors.controlBorder }]}
                                 onPress={takePicture}
                             >
                                 <View style={[styles.shutterInner, { backgroundColor: '#FFFFFF' }]} />
@@ -428,9 +428,9 @@ export default function CameraScreen({ navigation }) {
                                 showInfoAlert("İpucu", "Yaprak fotoğrafını çekerken:\n\n• Bitkiye çok yaklaşmayın\n• Işığın arkadan gelmemesine dikkat edin\n• Yaprağın tam görünmesini sağlayın\n\nYapay zeka yaprağı otomatik bulup analiz edecektir.", "Anladım");
                             }}>
                                 <View style={styles.actionSubCircle}>
-                                    <MaterialCommunityIcons name="help" size={24} color={isDark ? '#FFF' : '#1A1A1A'} />
+                                    <MaterialCommunityIcons name="help" size={24} color={colors.textMain} />
                                 </View>
-                                <Text style={[styles.actionSubText, { color: isDark ? '#A1A1AA' : '#8E8E93' }]}>İpuçları</Text>
+                                <Text style={[styles.actionSubText, { color: colors.textMuted }]}>İpuçları</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -665,7 +665,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
         zIndex: 100,
     },
     analyzingBox: {
-        backgroundColor: colors.card || '#1C1C1E',
+        backgroundColor: colors.card,
         borderRadius: 24,
         padding: 32,
         alignItems: 'center',
@@ -683,7 +683,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
         marginTop: 16,
     },
     analyzingSubText: {
-        color: colors.textMuted || '#888',
+        color: colors.textMuted,
         fontSize: 13,
         marginTop: 4,
         textAlign: 'center',
@@ -699,7 +699,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
         gap: 8,
     },
     stepText: {
-        color: colors.textMuted || '#AAA',
+        color: colors.textMuted,
         fontSize: 13,
         fontWeight: '500',
     },

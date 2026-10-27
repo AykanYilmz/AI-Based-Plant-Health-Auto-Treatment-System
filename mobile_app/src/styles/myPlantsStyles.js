@@ -18,7 +18,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
     headerLogoContainer: { flexDirection: 'row', alignItems: 'center' },
     headerTitleMain: { fontSize: 28, fontWeight: '800', color: colors.textMain, letterSpacing: -0.8 },
-    headerTitleAI: { color: '#2ECC71', fontWeight: '900', textShadowColor: 'rgba(46, 204, 113, 0.4)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
+    headerTitleAI: { color: colors.brand, fontWeight: '900', textShadowColor: 'rgba(46, 204, 113, 0.4)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
     headerIconsRow: { flexDirection: 'row', alignItems: 'center' },
     themeToggleContainer: { marginRight: 16 },
     bellIconContainer: { position: 'relative' },
@@ -314,7 +314,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
         marginBottom: 24,
         borderWidth: 1.5,
         borderColor: 'rgba(46, 204, 113, 0.25)',
-        shadowColor: '#2ECC71',
+        shadowColor: colors.brand,
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.12,
         shadowRadius: 12,
@@ -354,7 +354,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
     unitPriceBadge: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#2ECC71',
+        color: colors.brand,
         backgroundColor: 'rgba(46, 204, 113, 0.1)',
         paddingVertical: 4,
         paddingHorizontal: 10,
@@ -375,10 +375,10 @@ const getDynamicStyles = (colors) => StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 12,
-        backgroundColor: '#2ECC71',
+        backgroundColor: colors.brand,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#2ECC71',
+        shadowColor: colors.brand,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 6,
@@ -405,7 +405,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
     checkoutSummaryLabel: {
         fontSize: 11,
         fontWeight: '800',
-        color: '#2ECC71',
+        color: colors.brand,
         letterSpacing: 1,
         marginBottom: 2,
     },
@@ -417,7 +417,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
     checkoutSummaryTotal: {
         fontSize: 26,
         fontWeight: 'bold',
-        color: '#2ECC71',
+        color: colors.brand,
         letterSpacing: -0.5,
     },
     formSectionTitle: {
@@ -456,13 +456,13 @@ const getDynamicStyles = (colors) => StyleSheet.create({
         height: '100%',
     },
     donateSubmitBtnPremium: {
-        backgroundColor: '#2ECC71',
+        backgroundColor: colors.brand,
         height: 58,
         borderRadius: 20,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#2ECC71',
+        shadowColor: colors.brand,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
         shadowRadius: 16,
@@ -483,11 +483,11 @@ const getDynamicStyles = (colors) => StyleSheet.create({
         width: 110,
         height: 110,
         borderRadius: 55,
-        backgroundColor: '#2ECC71',
+        backgroundColor: colors.brand,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 20,
-        shadowColor: '#2ECC71',
+        shadowColor: colors.brand,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
         shadowRadius: 16,
@@ -503,7 +503,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
     successSubTitlePremium: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#2ECC71',
+        color: colors.brand,
         marginBottom: 24,
     },
     certificateSummaryCardPremium: {
@@ -564,7 +564,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
     },
     certPaymentBadgeTextPremium: {
         fontSize: 13,
-        color: '#2ECC71',
+        color: colors.brand,
         fontWeight: 'bold',
     },
     successTextPremium: {
@@ -597,7 +597,7 @@ const getDynamicStyles = (colors) => StyleSheet.create({
 
     // Eski / Kullanılmayan stiller (geriye dönük uyumluluk)
     donationBanner: {
-        backgroundColor: '#2ECC71',
+        backgroundColor: colors.brand,
         borderRadius: 24,
         padding: 24,
         alignItems: 'center',
