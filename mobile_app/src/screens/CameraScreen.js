@@ -400,8 +400,8 @@ export default function CameraScreen({ navigation }) {
                             </View>
                             <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textMuted} />
                             <View style={styles.pipelineStep}>
-                                <MaterialCommunityIcons name="medical-bag" size={16} color={'#888'} />
-                                <Text style={[styles.pipelineStepText, { color: '#888' }]}>Hastalık (Yakında)</Text>
+                                <MaterialCommunityIcons name="medical-bag" size={16} color={colors.accent} />
+                                <Text style={[styles.pipelineStepText, { color: colors.textMuted }]}>Hastalığı Bul</Text>
                             </View>
                         </View>
 

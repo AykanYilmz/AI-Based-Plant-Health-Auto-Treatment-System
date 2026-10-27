@@ -79,7 +79,7 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
 
 ## 🔵 Ürün ve Kullanıcı Deneyimi
 
-- [ ] **25. Eskimiş etiket** — Kamera ekranında "Hastalık (Yakında)" yazıyor, oysa hastalık tespiti çalışıyor.
+- [x] **25. Eskimiş etiket** — ✅ Kamera ekranındaki gri "Hastalık (Yakında)" adımı, diğer adımlarla aynı görünümde "Hastalığı Bul" yapıldı.
 - [ ] **26. Boş ekranlar** — Topluluk (Stats) sekmesi, Akıllı Sulama ve iki karusel kartı "Yakında" durumunda.
 - [ ] **27. Çevrimdışı mod yok** — Planlanan yerel DB (SQLite/MMKV) ve senkronizasyon yapılmadı.
 - [ ] **28. Şifre sıfırlama ve e-posta doğrulama yok** — "Şifremi unuttum" akışı eksik.
