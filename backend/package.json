@@ -9,7 +9,8 @@
     "test:integration": "jest --runInBand --testPathIgnorePatterns /node_modules/ --testPathPattern integration",
     "migrate": "node scripts/migrate.js",
     "migrate:status": "node scripts/migrate.js --status",
-    "test:python": "node scripts/pytest.js"
+    "test:python": "node scripts/pytest.js",
+    "cleanup:images": "node scripts/cleanup-images.js"
   },
   "keywords": [],
   "author": "",

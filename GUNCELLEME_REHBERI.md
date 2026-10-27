@@ -104,6 +104,7 @@ npm run test:python       # Python AI pipeline testleri (.env'deki PYTHON_PATH v
 ```bash
 npm run migrate:status   # Hangi migration'lar uygulandı
 npm run migrate          # Bekleyenleri sunucuyu başlatmadan uygula
+npm run cleanup:images   # Kayda bağlı olmayan eski teşhis görsellerini listele (silmek için: -- --apply)
 ```
 Yeni bir şema değişikliği için bir sonraki numarayla yeni dosya ekleyin (ör. `002_add_plant_notes.sql`); **uygulanmış dosyaları değiştirmeyin**. Bitki/hastalık kataloğu (`src/domain/PlantCatalog.js`) her açılışta veritabanıyla senkronize edilir; tedavi metinlerini orada güncellemeniz yeterlidir.
 

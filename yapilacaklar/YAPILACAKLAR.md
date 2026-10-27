@@ -82,7 +82,7 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
 - [ ] **27. Çevrimdışı mod yok** — Planlanan yerel DB (SQLite/MMKV) ve senkronizasyon yapılmadı.
 - [ ] **28. Şifre sıfırlama ve e-posta doğrulama yok** — "Şifremi unuttum" akışı eksik.
 - [ ] **29. Tedavi önerileri sabit ve genel** — Dozaj, etken madde ve bölgeye göre öneri yok; planlanan "karar motoru" yapılmadı.
-- [ ] **30. Yetim görsel dosyalar** — Kullanıcı silindiğinde teşhis kayıtları cascade ile siliniyor ama diskteki fotoğrafları kalıyor.
+- [x] **30. Yetim görsel dosyalar** — ✅ `OrphanImageCleaner` + `npm run cleanup:images` (varsayılan yalnızca listeler; `-- --apply` ile siler). Yalnızca uygulamanın kaydettiği `img_*.jpg` dosyalarına bakar, hiçbir teşhis kaydına bağlı olmayan ve 24 saatten eski olanları bulur (o anda kaydedilmekte olan teşhislere dokunmamak için). Entegrasyon testiyle doğrulandı. Not: Uygulamada hesap silme özelliği yok; eklenirse (Google Play bunu zorunlu tutuyor) görseller de silinmeli.
 
 ---
 

@@ -47,6 +47,19 @@ class ImageStorage {
         await Promise.all(filenames.map(name => this.remove(name)));
     }
 
+    /**
+     * Uygulamanın kaydettiği teşhis görsellerini (img_*.jpg) değiştirilme zamanlarıyla listeler.
+     * Elle konmuş veya başka amaçlı dosyalar listelenmez.
+     * @returns {Promise<{ filename: string, modifiedAt: Date }[]>}
+     */
+    async listImages() {
+        const names = (await fs.promises.readdir(this.#directory)).filter(n => /^img_.+\.jpg$/.test(n));
+        return Promise.all(names.map(async (filename) => ({
+            filename,
+            modifiedAt: (await fs.promises.stat(this.#resolve(filename))).mtime,
+        })));
+    }
+
     /** Görselin diskteki tam yolu; dosya yoksa null. */
     async pathFor(filename) {
         const filePath = this.#resolve(filename);

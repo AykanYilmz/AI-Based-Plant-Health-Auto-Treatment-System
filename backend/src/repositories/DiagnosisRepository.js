@@ -50,6 +50,12 @@ class DiagnosisRepository {
         return res.rows;
     }
 
+    /** Herhangi bir teşhis kaydının referans verdiği tüm görsel dosya adları. */
+    async findAllImageFilenames() {
+        const res = await this.#db.query('SELECT DISTINCT resim_yolu FROM diagnoses WHERE resim_yolu IS NOT NULL');
+        return new Set(res.rows.map(r => r.resim_yolu));
+    }
+
     /** Görselin bu kullanıcının bir teşhis kaydına ait olup olmadığını kontrol eder. */
     async userOwnsImage(filename, userUuid) {
         const res = await this.#db.query(
