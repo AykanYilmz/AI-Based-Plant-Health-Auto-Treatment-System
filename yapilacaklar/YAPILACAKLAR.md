@@ -69,7 +69,7 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
 - [x] **19. Backend adresi koda gömülü** — `mobile_app/src/config.js`
   - IP her değiştiğinde dosya düzenlenip commit'leniyor; ekipte herkes birbirinin IP'sini eziyor.
   - ✅ Çözüldü: Adres artık otomatik — önce `EXPO_PUBLIC_API_URL`, yoksa Metro'nun çalıştığı bilgisayarın IP'si (`Constants.expoConfig.hostUri`), o da yoksa emülatör varsayılanı.
-- [ ] **20. Test kapsamı düşük** *(kısmen)* — ✅ 48 birim testi var (`DiagnosisService`, `AuthService`, `TokenService`, `authenticate`, `CredentialPolicy`, `errorHandler`). Kalan: repository'ler için entegrasyon testi (gerçek PostgreSQL), `AiDaemonClient` ve Python pipeline (`pytest`) testleri, mobil testler.
+- [ ] **20. Test kapsamı** *(büyük ölçüde)* — ✅ Backend: 48 birim testi (`npm test`), gerçek PostgreSQL ile 8 entegrasyon testi (`npm run test:integration`: migration/katalog idempotency, büyük/küçük harf duyarsız e-posta, kullanıcılar arası kayıt/görsel izolasyonu, refresh token iptali ve cascade, süresi dolmuş token temizliği), Python pipeline için 11 pytest testi (`npm run test:python`: güven eşikleri, yaprak kırpma hesabı, model yok/hata durumları). Kalan: `AiDaemonClient` (süreç yönetimi) testleri ve mobil testler (jest-expo kurulumu gerekir).
 - [ ] **21. Lint hataları** *(kısmen)* — ✅ 24 → 11 sorun. Kalanlar (hepsi refactor öncesinden):
   - `useSwipeModal.js`: render sırasında ref okuma (8 hata) — `Animated` değerlerinin state'e/`useMemo`'ya taşınması gerekiyor
   - `ThemeContext.js`, `LoginScreen.js`, `DiagnosisDetailModal.js`: effect içinde senkron `setState`

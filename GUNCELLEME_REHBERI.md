@@ -91,6 +91,14 @@ Canlı ortamda (`NODE_ENV=production`) backend şifrelenmemiş HTTP isteklerini 
 
 Mobil uygulamanın **canlı (release) sürümü**, `EXPO_PUBLIC_API_URL` tanımlı değilse veya `https://` ile başlamıyorsa açılışta hata verir. Geliştirmede (Expo Go) bu kontrol devre dışıdır.
 
+### 🧪 Testler
+`backend` klasöründe:
+```bash
+npm test                  # Birim testleri (veritabanı gerekmez)
+npm run test:integration  # Gerçek PostgreSQL ile repository/migration testleri (geçici test veritabanı açıp siler)
+npm run test:python       # Python AI pipeline testleri (.env'deki PYTHON_PATH venv'i ile; pytest kurulu olmalı)
+```
+
 ### 🗄️ Veritabanı Migration'ları
 Şema değişiklikleri `backend/src/database/migrations/` klasöründeki numaralı SQL dosyalarıyla yönetilir ve sunucu açılışında otomatik uygulanır (uygulananlar `schema_migrations` tablosunda tutulur, hiçbir zaman otomatik tablo silinmez).
 ```bash

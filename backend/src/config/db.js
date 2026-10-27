@@ -121,10 +121,19 @@ class Database {
     }
 }
 
-module.exports = new Database({
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    database: process.env.DB_DATABASE || 'plant_health_db',
-});
+/** Ortam değişkenlerinden bağlantı ayarları (`overrides` ile ör. test veritabanı adı verilebilir). */
+function connectionConfigFromEnv(overrides = {}) {
+    return {
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || 'postgres',
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '5432', 10),
+        database: process.env.DB_DATABASE || 'plant_health_db',
+        ...overrides,
+    };
+}
+
+module.exports = new Database(connectionConfigFromEnv());
+// Entegrasyon testleri ayrı bir test veritabanına bağlanabilsin diye sınıf da dışa açılır
+module.exports.Database = Database;
+module.exports.connectionConfigFromEnv = connectionConfigFromEnv;
