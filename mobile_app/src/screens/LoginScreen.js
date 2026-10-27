@@ -58,10 +58,14 @@ export default function LoginScreen() {
         loadRememberedLogin();
     }, []);
 
-    // Hataları temizle
-    useEffect(() => {
+    // Kullanıcı sekme veya form alanlarını değiştirince hata mesajını temizle
+    // (effect yerine render sırasında; ekstra render yok)
+    const formSnapshot = JSON.stringify([activeTab, loginEmail, loginPassword, name, registerEmail, registerPassword, confirmPassword]);
+    const [errorFormSnapshot, setErrorFormSnapshot] = useState(formSnapshot);
+    if (formSnapshot !== errorFormSnapshot) {
+        setErrorFormSnapshot(formSnapshot);
         setErrorMsg('');
-    }, [activeTab, loginEmail, loginPassword, name, registerEmail, registerPassword, confirmPassword]);
+    }
 
     const handleLoginSubmit = async () => {
         if (!loginEmail.trim() || !loginPassword) {

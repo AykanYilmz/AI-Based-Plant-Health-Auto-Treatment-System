@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, Animated, ScrollView, Image, TouchableOpacity, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSwipeModal } from '../../hooks/useSwipeModal';
@@ -22,12 +22,12 @@ export default function DiagnosisDetailModal({ visible, selectedItem, onClose, o
     const { swipePanResponder, closeModal, handleScrollEnd, animatedStyle } = useSwipeModal(onClose);
     const [zoomVisible, setZoomVisible] = useState(false);
 
-    // Modal kapandığında zoom durumunu sıfırla
-    useEffect(() => {
-        if (!visible) {
-            setZoomVisible(false);
-        }
-    }, [visible]);
+    // Modal kapandığında zoom durumunu sıfırla (effect yerine render sırasında; ekstra render yok)
+    const [wasVisible, setWasVisible] = useState(visible);
+    if (visible !== wasVisible) {
+        setWasVisible(visible);
+        if (!visible) setZoomVisible(false);
+    }
 
     const handleClose = () => {
         setZoomVisible(false);

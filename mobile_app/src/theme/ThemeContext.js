@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo } from 'react';
 import { useColorScheme, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Colors } from './colors';
 
@@ -12,11 +12,13 @@ export const ThemeProvider = ({ children }) => {
     const systemColorScheme = useColorScheme();
     const [theme, setTheme] = useState(systemColorScheme || 'light');
 
-    useEffect(() => {
-        if (systemColorScheme) {
-            setTheme(systemColorScheme);
-        }
-    }, [systemColorScheme]);
+    // Sistem teması değişince uygulama teması onu takip eder (elle seçim o zamana kadar geçerli kalır).
+    // Effect yerine render sırasında karşılaştırılır; ekstra render olmaz.
+    const [lastSystemScheme, setLastSystemScheme] = useState(systemColorScheme);
+    if (systemColorScheme !== lastSystemScheme) {
+        setLastSystemScheme(systemColorScheme);
+        if (systemColorScheme) setTheme(systemColorScheme);
+    }
 
     const toggleTheme = () => {
         // En profesyonel, sıfır-lag native GPU Crossfade animasyonu

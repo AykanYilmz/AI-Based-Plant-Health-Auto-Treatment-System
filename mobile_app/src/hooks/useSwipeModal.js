@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { PanResponder, Animated, Dimensions } from 'react-native';
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -22,7 +22,13 @@ const { height: screenHeight } = Dimensions.get('window');
  * }}
  */
 export function useSwipeModal(onClose) {
-    const panY = useRef(new Animated.Value(0)).current;
+    const [panY] = useState(() => new Animated.Value(0));
+
+    // PanResponder bir kez oluşturulur; onClose sonradan değişse bile her zaman en güncelini çağırmak için ref'te tutulur
+    const onCloseRef = useRef(onClose);
+    useEffect(() => {
+        onCloseRef.current = onClose;
+    }, [onClose]);
 
     const closeModal = useCallback(() => {
         Animated.timing(panY, {
@@ -31,11 +37,14 @@ export function useSwipeModal(onClose) {
             useNativeDriver: false,
         }).start(() => {
             panY.setValue(0);
-            onClose();
+            onCloseRef.current();
         });
-    }, [panY, onClose]);
+    }, [panY]);
 
-    const swipePanResponder = useRef(
+    // closeModal'daki ref yalnızca jest olay işleyicilerinde (render dışında) okunur; analiz aracı
+    // PanResponder.create'e verilen işleyicileri render sırasında çalışıyor sanıp yanlış uyarı veriyor.
+    // eslint-disable-next-line react-hooks/refs
+    const [swipePanResponder] = useState(() =>
         PanResponder.create({
             // ✅ iOS FIX: Drag handle'da touch'u hemen yakala (false → true)
             // false olunca iOS native gesture önce alıyor ve bize hiç gelmiyor
@@ -85,7 +94,7 @@ export function useSwipeModal(onClose) {
                 }).start();
             },
         })
-    ).current;
+    );
 
     // ScrollView'in en tepesinde yukarı çekilince kapanma (bounce effect)
     const handleScrollEnd = (e) => {
