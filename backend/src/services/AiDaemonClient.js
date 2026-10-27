@@ -22,16 +22,22 @@ class AiDaemonClient {
     #pythonExecutable;
     #host;
     #port;
+    #spawnProcess;
     #process = null;
     #ready = false;
     #classNames = [];
     #restartPromise = null;
 
-    constructor({ paths, pythonExecutable = 'python', host = '127.0.0.1', port = 5005 }) {
+    /**
+     * @param {object} options
+     * @param {Function} [options.spawnProcess] - Süreç başlatıcı (testlerde gerçek Python yerine sahtesi verilir)
+     */
+    constructor({ paths, pythonExecutable = 'python', host = '127.0.0.1', port = 5005, spawnProcess = spawn }) {
         this.#paths = paths;
         this.#pythonExecutable = pythonExecutable;
         this.#host = host;
         this.#port = port;
+        this.#spawnProcess = spawnProcess;
     }
 
     get isReady() {
@@ -173,7 +179,7 @@ class AiDaemonClient {
     }
 
     #spawnDaemon() {
-        const proc = spawn(this.#pythonExecutable, [
+        const proc = this.#spawnProcess(this.#pythonExecutable, [
             this.#paths.PIPELINE_SCRIPT,
             '--server',
             this.#paths.YOLO_MODEL_PATH,
