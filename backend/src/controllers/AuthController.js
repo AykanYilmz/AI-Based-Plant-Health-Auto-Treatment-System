@@ -4,9 +4,11 @@
  */
 class AuthController {
     #service;
+    #accounts;
 
-    constructor(authService) {
+    constructor(authService, accountService) {
         this.#service = authService;
+        this.#accounts = accountService;
     }
 
     /** POST /api/auth/register */
@@ -43,6 +45,12 @@ class AuthController {
     upgrade = async (req, res) => {
         const user = await this.#service.upgrade(req.user.uuid, req.body || {});
         res.json({ basarili: true, user });
+    };
+
+    /** DELETE /api/auth/account (giriş gerekli) — { password } kayıtlı hesaplarda zorunlu */
+    deleteAccount = async (req, res) => {
+        await this.#accounts.deleteAccount(req.user.uuid, req.body || {});
+        res.json({ basarili: true, mesaj: 'Hesabınız ve tüm verileriniz kalıcı olarak silindi.' });
     };
 
     static #sessionResponse({ user, tokens }) {

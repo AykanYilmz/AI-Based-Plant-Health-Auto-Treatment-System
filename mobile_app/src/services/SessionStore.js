@@ -53,6 +53,12 @@ class SessionStore {
         await AsyncStorage.multiRemove([KEYS.rememberedEmail, KEYS.rememberMe]);
     }
 
+    /** Hesap silindiğinde: oturum, hatırlanan e-posta ve misafir kimliği dahil her şeyi siler. */
+    async clearAll() {
+        await this.forget();
+        await this.clearGuestDeviceUuid();
+    }
+
     /** Oturum kapanınca token'ı sil ama giriş formu için e-postayı hatırlamaya devam et. */
     async clearRefreshToken() {
         try {

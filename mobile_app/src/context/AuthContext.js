@@ -148,8 +148,24 @@ export const AuthProvider = ({ children }) => {
         endSession();
     };
 
+    // Hesabı Sil — sunucudaki tüm veriler ve cihazdaki oturum bilgileri silinir
+    const deleteAccount = async (password) => {
+        try {
+            const data = await api.deleteAccount(password);
+            if (!data.basarili) {
+                return { basarili: false, hata: data.hata || 'Hesap silinemedi.' };
+            }
+            await sessionStore.clearAll();
+            endSession();
+            return { basarili: true };
+        } catch (err) {
+            console.log('Hesap silme API Hatası:', err);
+            return { basarili: false, hata: NETWORK_ERROR };
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, guestLogin, upgrade, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, register, guestLogin, upgrade, logout, deleteAccount }}>
             {children}
         </AuthContext.Provider>
     );

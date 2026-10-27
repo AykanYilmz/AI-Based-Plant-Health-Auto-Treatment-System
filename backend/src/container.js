@@ -13,6 +13,7 @@ const AiDaemonClient = require('./services/AiDaemonClient');
 const ImageStorage = require('./services/ImageStorage');
 const TokenService = require('./services/TokenService');
 const AuthService = require('./services/AuthService');
+const AccountService = require('./services/AccountService');
 const DiagnosisService = require('./services/DiagnosisService');
 const AuthController = require('./controllers/AuthController');
 const DiagnoseController = require('./controllers/DiagnoseController');
@@ -50,6 +51,7 @@ const imageStorage = new ImageStorage(paths.UPLOADS_DIR);
 const tokenService = new TokenService({ secret: resolveJwtSecret(), refreshTokenRepository });
 
 const authService = new AuthService({ db, userRepository, tokenService });
+const accountService = new AccountService({ db, imageStorage });
 const diagnosisService = new DiagnosisService({
     db,
     aiClient,
@@ -65,6 +67,6 @@ module.exports = {
     refreshTokenRepository,
     databaseInitializer: new DatabaseInitializer({ db, migrator: new Migrator(db), seeder: new CatalogSeeder(db) }),
     authenticate: createAuthenticate(tokenService),
-    authController: new AuthController(authService),
+    authController: new AuthController(authService, accountService),
     diagnoseController: new DiagnoseController(diagnosisService),
 };

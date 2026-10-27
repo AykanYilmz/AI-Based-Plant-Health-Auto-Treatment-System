@@ -25,6 +25,21 @@ class UserRepository {
         return res.rows[0] || null;
     }
 
+    /** Şifre doğrulaması için hash ile birlikte getirir (misafirlerde password_hash null'dır). */
+    async findByUuidWithPassword(uuid) {
+        const res = await this.#db.query(`SELECT ${PUBLIC_COLUMNS}, password_hash FROM users WHERE uuid = $1`, [uuid]);
+        return res.rows[0] || null;
+    }
+
+    /**
+     * Kullanıcıyı siler; teşhis kayıtları ve oturum token'ları ON DELETE CASCADE ile silinir.
+     * @returns {Promise<boolean>} Kullanıcı bulunup silindiyse true
+     */
+    async deleteByUuid(uuid) {
+        const res = await this.#db.query('DELETE FROM users WHERE uuid = $1', [uuid]);
+        return res.rowCount > 0;
+    }
+
     async emailExists(email, excludeUuid = null) {
         // Büyük/küçük harf farkı olan eski kayıtlar da çakışma sayılır
         const res = excludeUuid

@@ -129,6 +129,7 @@ async function startServer() {
         if (isHttpsRequired()) logger.info('🔐 HTTPS zorunlu: şifrelenmemiş istekler reddediliyor.');
         logger.info(`📡 API Endpoint'leri:`);
         logger.info(`   POST /api/auth/{register,login,guest,refresh,logout,upgrade} → Oturum işlemleri`);
+        logger.info(`   DELETE /api/auth/account → Hesabı ve tüm verileri sil 🔒`);
         logger.info(`   POST /api/diagnose  → Fotoğraf yükle ve teşhis al 🔒`);
         logger.info(`   GET  /api/history   → Kullanıcının geçmiş teşhislerini getir 🔒`);
         logger.info(`   DELETE /api/history/:id → Belirli teşhis kaydını sil 🔒`);

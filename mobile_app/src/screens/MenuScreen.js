@@ -21,7 +21,7 @@ import { registrationError } from '../utils/credentialRules';
 
 export default function MenuScreen() {
     const { isDark, colors, toggleTheme } = useTheme();
-    const { user, upgrade, logout } = useAuth();
+    const { user, upgrade, logout, deleteAccount } = useAuth();
 
     // Özel onay modalı
     const { showCustomAlert, showInfoAlert, hideCustomAlert, customAlertProps } = useCustomAlert();
@@ -34,6 +34,12 @@ export default function MenuScreen() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+
+    // Hesap silme (kayıtlı hesaplarda şifre onayı istenir)
+    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+    const [deletePassword, setDeletePassword] = useState('');
+    const [deleteError, setDeleteError] = useState('');
+    const [deleting, setDeleting] = useState(false);
 
     // Dinamik stiller
     const styles = useMemo(() => getDynamicStyles(colors, isDark), [colors, isDark]);
@@ -83,6 +89,51 @@ export default function MenuScreen() {
             'Çıkış Yap',
             'İptal'
         );
+    };
+
+    // Başarılı silmede kullanıcı oturumu kapanır ve uygulama giriş ekranına döner
+    const runDeleteAccount = async (password) => {
+        setDeleting(true);
+        const res = await deleteAccount(password);
+        setDeleting(false);
+        return res;
+    };
+
+    const handleDeleteAccount = () => {
+        if (!isGuest) {
+            setDeletePassword('');
+            setDeleteError('');
+            setDeleteModalVisible(true);
+            return;
+        }
+        showCustomAlert(
+            'Hesabı Sil',
+            'Misafir hesabınız ve tüm teşhis geçmişiniz (fotoğraflar dahil) kalıcı olarak silinecek. Bu işlem geri alınamaz.',
+            async () => {
+                hideCustomAlert();
+                const res = await runDeleteAccount();
+                if (!res.basarili) {
+                    setTimeout(() => showInfoAlert('Hata', res.hata), 500);
+                }
+            },
+            true,
+            'Kalıcı Olarak Sil',
+            'Vazgeç'
+        );
+    };
+
+    const handleDeleteSubmit = async () => {
+        if (!deletePassword) {
+            setDeleteError('Lütfen şifrenizi girin.');
+            return;
+        }
+        setDeleteError('');
+        const res = await runDeleteAccount(deletePassword);
+        if (res.basarili) {
+            setDeleteModalVisible(false);
+        } else {
+            setDeleteError(res.hata);
+        }
     };
 
     const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : 'M';
@@ -173,7 +224,88 @@ export default function MenuScreen() {
                     <Text style={styles.logoutText}>Oturumu Kapat</Text>
                 </TouchableOpacity>
 
+                {/* ── HESABI SİL ──────────────────────────── */}
+                <TouchableOpacity
+                    style={styles.deleteAccountButton}
+                    onPress={handleDeleteAccount}
+                    disabled={deleting}
+                    activeOpacity={0.7}
+                >
+                    {deleting && !deleteModalVisible ? (
+                        <ActivityIndicator color={colors.alert} />
+                    ) : (
+                        <>
+                            <MaterialCommunityIcons name="account-remove-outline" size={18} color={colors.alert} style={styles.logoutIcon} />
+                            <Text style={styles.deleteAccountText}>Hesabımı Sil</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+
             </ScrollView>
+
+            {/* ── HESAP SİLME MODALI (kayıtlı hesaplar: şifre onayı) ── */}
+            <Modal
+                visible={deleteModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setDeleteModalVisible(false)}
+            >
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.modalOverlay}
+                >
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Hesabı Sil</Text>
+                            <TouchableOpacity onPress={() => setDeleteModalVisible(false)} style={styles.modalCloseButton}>
+                                <MaterialCommunityIcons name="close" size={24} color={colors.textMain} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.deleteWarningText}>
+                            Hesabınız, tüm teşhis geçmişiniz ve fotoğraflarınız kalıcı olarak silinecek. Bu işlem geri alınamaz. Onaylamak için şifrenizi girin.
+                        </Text>
+
+                        {!!deleteError && (
+                            <View style={styles.errorContainer}>
+                                <MaterialCommunityIcons name="alert-circle-outline" size={18} color={colors.alert} />
+                                <Text style={styles.errorText}>{deleteError}</Text>
+                            </View>
+                        )}
+
+                        <Text style={styles.inputLabel}>Şifre</Text>
+                        <View style={styles.inputContainer}>
+                            <MaterialCommunityIcons name="lock-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="••••••"
+                                placeholderTextColor={colors.textMuted + '80'}
+                                secureTextEntry
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                value={deletePassword}
+                                onChangeText={(text) => { setDeletePassword(text); setDeleteError(''); }}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.modalSubmitButton, styles.deleteSubmitButton]}
+                            onPress={handleDeleteSubmit}
+                            disabled={deleting}
+                            activeOpacity={0.9}
+                        >
+                            {deleting ? (
+                                <ActivityIndicator color={colors.onAccent} />
+                            ) : (
+                                <>
+                                    <MaterialCommunityIcons name="delete-forever-outline" size={18} color={colors.onAccent} style={{ marginRight: 6 }} />
+                                    <Text style={styles.modalSubmitButtonText}>Hesabımı Kalıcı Olarak Sil</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
 
             {/* ── HESAP YÜKSELTME MODALI ──────────────── */}
             <Modal
@@ -481,6 +613,30 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
         color: colors.alert,
         fontSize: 15,
         fontWeight: '700',
+    },
+    // Hesap silme: çıkış butonundan daha az baskın, ikincil bir eylem
+    deleteAccountButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        marginTop: 4,
+        marginBottom: 8,
+    },
+    deleteAccountText: {
+        color: colors.alert,
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    deleteWarningText: {
+        color: colors.textMuted,
+        fontSize: 14,
+        lineHeight: 20,
+        marginBottom: 16,
+    },
+    deleteSubmitButton: {
+        backgroundColor: colors.alert,
+        shadowColor: colors.alert,
     },
     // Modal Stilleri
     modalOverlay: {

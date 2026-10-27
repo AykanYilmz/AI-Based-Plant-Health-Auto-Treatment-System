@@ -79,6 +79,11 @@ export class ApiClient {
         return this.#authorizedRequest('/api/auth/upgrade', ApiClient.#jsonBody('POST', { name, email, password }));
     }
 
+    /** Hesabı ve tüm verileri kalıcı olarak siler (kayıtlı hesaplarda şifre gerekir). */
+    deleteAccount(password) {
+        return this.#authorizedRequest('/api/auth/account', ApiClient.#jsonBody('DELETE', { password }));
+    }
+
     // ─── Teşhis ve Geçmiş ─────────────────────────────────────
 
     /**

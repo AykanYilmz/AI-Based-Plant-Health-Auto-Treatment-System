@@ -30,6 +30,9 @@ function createAuthRoutes(controller, authenticate, limiters) {
     // /api/auth/upgrade - Oturumdaki misafir hesabı yükselt
     router.post('/upgrade', authenticate, controller.upgrade);
 
+    // /api/auth/account - Hesabı ve tüm verileri kalıcı olarak sil
+    router.delete('/account', authenticate, controller.deleteAccount);
+
     return router;
 }
 
