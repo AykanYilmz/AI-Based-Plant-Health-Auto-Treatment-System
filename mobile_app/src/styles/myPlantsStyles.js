@@ -1,4 +1,4 @@
-import { StyleSheet, Platform, StatusBar, Dimensions } from 'react-native';
+import { StyleSheet, Platform, Dimensions } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -12,7 +12,7 @@ export const SCROLL_WIDTH = CARD_WIDTH + GAP;
  * colors nesnesi: Colors.dark veya Colors.light (src/theme/colors.js)
  */
 const getDynamicStyles = (colors) => StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
+    safeArea: { flex: 1, backgroundColor: colors.background },
     scrollContent: { paddingTop: 10, paddingBottom: 40 },
     paddedSection: { paddingHorizontal: 20 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },

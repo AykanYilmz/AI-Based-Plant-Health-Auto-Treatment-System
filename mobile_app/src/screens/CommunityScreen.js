@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 
 export default function CommunityScreen() {
@@ -9,7 +10,7 @@ export default function CommunityScreen() {
     const styles = useMemo(() => getDynamicStyles(colors), [colors]);
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
             <View style={styles.content}>
                 <Text style={styles.text}>Toplum Özelliği Yakında!</Text>
             </View>
@@ -21,7 +22,6 @@ const getDynamicStyles = (colors) => StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: colors.background, // Temaya göre dinamik zemin
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     content: {
         flex: 1,

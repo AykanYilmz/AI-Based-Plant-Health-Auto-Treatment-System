@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import {
-    View, Text, SafeAreaView, ScrollView, TouchableOpacity,
+    View, Text, ScrollView, TouchableOpacity,
     ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -135,7 +136,7 @@ export default function MyPlantsScreen({ navigation }) {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
                 {/* ── HEADER ──────────────────────────────── */}

@@ -5,12 +5,12 @@ import {
     TextInput,
     TouchableOpacity,
     StyleSheet,
-    SafeAreaView,
     ScrollView,
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { sessionStore } from '../services/SessionStore';
 import { isValidEmail, registrationError } from '../utils/credentialRules';

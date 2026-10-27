@@ -3,7 +3,6 @@ import {
     View, 
     Text, 
     StyleSheet, 
-    SafeAreaView, 
     Platform, 
     StatusBar, 
     FlatList, 
@@ -11,6 +10,7 @@ import {
     TouchableOpacity, 
     ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -198,7 +198,7 @@ export default function SearchScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
             
             {/* Header */}
@@ -266,7 +266,6 @@ const getDynamicStyles = (colors) => StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: colors.background,
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     header: {
         paddingHorizontal: 24,

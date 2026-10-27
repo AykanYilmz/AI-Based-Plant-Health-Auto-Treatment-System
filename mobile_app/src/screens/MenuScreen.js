@@ -3,9 +3,7 @@ import {
     View,
     Text,
     StyleSheet,
-    SafeAreaView,
     Platform,
-    StatusBar,
     TouchableOpacity,
     Modal,
     TextInput,
@@ -13,6 +11,7 @@ import {
     ScrollView,
     KeyboardAvoidingView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -89,7 +88,7 @@ export default function MenuScreen() {
     const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : 'M';
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 
                 {/* ── PROFİL KARTI ────────────────────────── */}
@@ -307,7 +306,6 @@ const getDynamicStyles = (colors, isDark) => StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: colors.background,
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     scrollContent: {
         paddingHorizontal: 20,

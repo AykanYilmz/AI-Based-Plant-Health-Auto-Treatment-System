@@ -2,6 +2,7 @@ import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationBar } from 'expo-navigation-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
@@ -80,11 +81,13 @@ function AppContent() {
 
 export default function App() {
     return (
-        <ThemeProvider>
-            <AuthProvider>
-                <AppContent />
-            </AuthProvider>
-        </ThemeProvider>
+        <SafeAreaProvider>
+            <ThemeProvider>
+                <AuthProvider>
+                    <AppContent />
+                </AuthProvider>
+            </ThemeProvider>
+        </SafeAreaProvider>
     );
 }
 
