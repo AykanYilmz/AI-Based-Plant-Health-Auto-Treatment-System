@@ -1,20 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import { api } from '../services/ApiClient';
 import { sessionStore } from '../services/SessionStore';
 
 const AuthContext = createContext();
 
-const GUEST_DEVICE_UUID_KEY = 'guestDeviceUuid';
 const NETWORK_ERROR = 'Sunucuya bağlanılamadı. Lütfen ağınızı kontrol edin.';
 
-/** Misafir hesabın kimliği; tahmin edilemez olması için kriptografik rastgele üretilir. */
+/** Misafir hesabın kimliği; tahmin edilemez olması için kriptografik rastgele üretilir ve güvenli depoda tutulur. */
 async function getOrCreateGuestDeviceUuid({ forceNew = false } = {}) {
-    let deviceUuid = forceNew ? null : await AsyncStorage.getItem(GUEST_DEVICE_UUID_KEY);
+    let deviceUuid = forceNew ? null : await sessionStore.loadGuestDeviceUuid();
     if (!deviceUuid) {
         deviceUuid = Crypto.randomUUID();
-        await AsyncStorage.setItem(GUEST_DEVICE_UUID_KEY, deviceUuid);
+        await sessionStore.saveGuestDeviceUuid(deviceUuid);
     }
     return deviceUuid;
 }
@@ -130,7 +128,7 @@ export const AuthProvider = ({ children }) => {
                 return { basarili: false, hata: data.hata || 'Hesap yükseltilemedi.' };
             }
             // Bu kimlik artık kayıtlı hesaba ait; bir sonraki misafir girişi yeni kimlikle yapılır
-            await AsyncStorage.removeItem(GUEST_DEVICE_UUID_KEY);
+            await sessionStore.clearGuestDeviceUuid();
             setUser(data.user);
             return { basarili: true };
         } catch (err) {

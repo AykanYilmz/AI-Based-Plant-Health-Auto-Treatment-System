@@ -27,7 +27,7 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
 - [x] **6. Şifre telefonda düz metin saklanıyor** — `mobile_app/src/services/SessionStore.js`
   - "Beni hatırla" seçildiğinde şifre AsyncStorage'a açık olarak (`savedPassword`) yazılıyordu.
   - ✅ Çözüldü: Şifre artık hiç saklanmıyor. "Beni hatırla" açıksa sunucuda iptal edilebilen refresh token `expo-secure-store` ile şifreli depoda (Android Keystore / iOS Keychain) tutulur ve uygulama açılışında oturum otomatik geri yüklenir; giriş formu için yalnızca e-posta hatırlanır. Eski sürümlerin bıraktığı `savedPassword` ilk açılışta cihazdan silinir.
-  - Kalan küçük iyileştirme: Misafir cihaz kimliği (`guestDeviceUuid`) hâlâ AsyncStorage'da; misafir oturumu açabildiği için `SecureStore`'a taşınabilir.
+  - ✅ Misafir cihaz kimliği de artık `SecureStore`'da; eski sürümlerin AsyncStorage'da bıraktığı değer ilk kullanımda güvenli depoya taşınıyor (misafir geçmişi korunuyor).
 
 ## 🟠 Yüksek — Sağlamlık ve Güvenlik Eksikleri
 

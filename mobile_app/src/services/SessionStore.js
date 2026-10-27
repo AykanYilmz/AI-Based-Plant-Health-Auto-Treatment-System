@@ -3,9 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEYS = {
     refreshToken: 'verdant.refreshToken',  // SecureStore (şifreli: Android Keystore / iOS Keychain)
+    guestDeviceUuid: 'verdant.guestDeviceUuid', // SecureStore
     rememberedEmail: 'savedEmail',         // AsyncStorage (hassas değil, giriş formunu doldurmak için)
     rememberMe: 'rememberMe',
 };
+
+// Eski sürümlerde misafir kimliği AsyncStorage'da (şifresiz) bu anahtarla tutuluyordu
+const LEGACY_GUEST_UUID_KEY = 'guestDeviceUuid';
 
 // Eski sürümlerin cihazda düz metin olarak bıraktığı anahtarlar
 const LEGACY_KEYS = ['savedPassword', 'userSession'];
@@ -54,6 +58,52 @@ class SessionStore {
         try {
             await SecureStore.deleteItemAsync(KEYS.refreshToken);
         } catch { /* yok sayılır */ }
+    }
+
+    /**
+     * Misafir hesabın cihaz kimliği. Misafir oturumu açmaya yettiği için güvenli depoda tutulur;
+     * eski sürümlerin AsyncStorage'da bıraktığı değer bir kez güvenli depoya taşınır (misafir geçmişi korunur).
+     */
+    async loadGuestDeviceUuid() {
+        const stored = await this.#secureGet(KEYS.guestDeviceUuid);
+        if (stored) return stored;
+
+        const legacy = await AsyncStorage.getItem(LEGACY_GUEST_UUID_KEY);
+        if (legacy && await this.#secureSet(KEYS.guestDeviceUuid, legacy)) {
+            await AsyncStorage.removeItem(LEGACY_GUEST_UUID_KEY);
+        }
+        return legacy;
+    }
+
+    async saveGuestDeviceUuid(uuid) {
+        if (!(await this.#secureSet(KEYS.guestDeviceUuid, uuid))) {
+            await AsyncStorage.setItem(LEGACY_GUEST_UUID_KEY, uuid); // Güvenli depo yoksa (ör. web)
+        }
+    }
+
+    async clearGuestDeviceUuid() {
+        try {
+            await SecureStore.deleteItemAsync(KEYS.guestDeviceUuid);
+        } catch { /* Güvenli depo yoksa silinecek bir şey de yok */ }
+        await AsyncStorage.removeItem(LEGACY_GUEST_UUID_KEY);
+    }
+
+    async #secureGet(key) {
+        try {
+            return await SecureStore.getItemAsync(key);
+        } catch {
+            return null;
+        }
+    }
+
+    /** @returns {Promise<boolean>} Kayıt başarılıysa true */
+    async #secureSet(key, value) {
+        try {
+            await SecureStore.setItemAsync(key, value);
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     /** @returns {Promise<{ email: string|null, rememberMe: boolean }>} */
