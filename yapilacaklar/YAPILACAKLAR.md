@@ -74,7 +74,7 @@ Projede tespit edilen güvenlik açıkları, eksiklikler ve geliştirme ihtiyaç
   - `useSwipeModal.js`: render sırasında ref okuma (8 hata) — `Animated` değerlerinin state'e/`useMemo`'ya taşınması gerekiyor
   - `ThemeContext.js`, `LoginScreen.js`, `DiagnosisDetailModal.js`: effect içinde senkron `setState`
 - [ ] **22. Deprecated `SafeAreaView`** — 6 ekran `react-native`'in `SafeAreaView`'ini kullanıyor (ileride kaldırılacak); `react-native-safe-area-context`'e geçilmeli.
-- [ ] **23. Bağımlılık açıkları** — `npm audit` mobil tarafta 16 açık gösteriyor (1 kritik, 9 yüksek).
+- [x] **23. Bağımlılık açıkları** — ✅ `npm audit fix` (uyumlu sürümler, `--force` yok): backend 9 → 0 (kritik `proxy-addr` IP sahteciliği ve `multer` DoS dahil), mobil 14 → 3. Kalan 3 açık `zod` kaynaklı ve yalnızca geliştirme araçlarında (`@expo/cli`, `eslint-plugin-react-hooks`) kullanılıyor, uygulama bundle'ına girmiyor; npm'in önerdiği "düzeltme" Expo SDK 54'e geri dönmek olduğu için uygulanmadı — Expo yeni sürüm çıkardığında `npx expo install --fix` ile kapanır.
 - [ ] **24. Tasarım kuralına aykırı sabit renkler** — Bazı stillerde `'#888'`, `'#1C1C1E'`, `'#1A1A1A'` gibi sabit hex renkler var; `src/theme/colors.js`'ten beslenmeli.
 
 ## 🔵 Ürün ve Kullanıcı Deneyimi
